@@ -1,0 +1,67 @@
+{
+    "identifier": "migrated",
+    "description": "permissions that were migrated from v1",
+    "local": true,
+    "windows": ["main", "unix_popup"],
+    "permissions": [
+        "core:path:default",
+        "core:event:default",
+        "core:window:default",
+        "core:window:allow-set-size",
+        "core:window:allow-show",
+        "core:window:allow-set-position",
+        "core:window:allow-set-focus",
+        "core:app:default",
+        "core:resources:default",
+        "core:menu:default",
+        "core:tray:default",
+        "core:image:allow-from-bytes",
+        "core:image:default",
+        "shell:allow-open",
+        "global-shortcut:allow-is-registered",
+        "global-shortcut:allow-register",
+        "global-shortcut:allow-register-all",
+        "global-shortcut:allow-unregister",
+        "global-shortcut:allow-unregister-all",
+        "clipboard-manager:allow-read-text",
+        "clipboard-manager:allow-write-text",
+        "clipboard-manager:default",
+        "clipboard-manager:allow-write-image",
+        "shell:default",
+        "clipboard-manager:default",
+        "fs:default",
+        {
+            "identifier": "fs:allow-exists",
+            "allow": [
+                {
+                    "path": "$APPDATA/*"
+                }
+            ]
+        },
+        {
+            "identifier": "fs:allow-read-text-file",
+            "allow": [
+                {
+                    "path": "$APPDATA/*"
+                }
+            ]
+        },
+        {
+            "identifier": "fs:allow-write-text-file",
+            "allow": [
+                {
+                    "path": "$APPDATA/*"
+                }
+            ]
+        },
+        {
+            "identifier": "fs:allow-mkdir",
+            "allow": [
+                {
+                    "path": "$APPDATA/*"
+                }
+            ]
+        },
+        "updater:default"
+    ]
+}
