@@ -20,6 +20,9 @@ dependencies:
   '@tauri-apps/plugin-global-shortcut':
     specifier: 2.0.0-rc.0
     version: 2.0.0-rc.0
+  '@tauri-apps/plugin-process':
+    specifier: 2.0.0-rc.0
+    version: 2.0.0-rc.0
   '@tauri-apps/plugin-shell':
     specifier: 2.0.0-rc.0
     version: 2.0.0-rc.0
@@ -715,6 +718,12 @@ packages:
 
   /@tauri-apps/plugin-global-shortcut@2.0.0-rc.0:
     resolution: {integrity: sha512-rcefV4AG+vnbTtGc07hDn4Uj8u//NpuqHVg1CShACyiCS0q2sZrDVC3qPN3RGhzQyeIOPq4bY1kQRHODffKXZA==}
+    dependencies:
+      '@tauri-apps/api': 2.0.0-rc.0
+    dev: false
+
+  /@tauri-apps/plugin-process@2.0.0-rc.0:
+    resolution: {integrity: sha512-Z12D/kmQzG1vCVf+jLXPhPDUA0pEjFrsg4p0uwO2sotVLM9287IuTM+aIz9cuAYOxFLKcsnDG7amSCL9IfA1gw==}
     dependencies:
       '@tauri-apps/api': 2.0.0-rc.0
     dev: false

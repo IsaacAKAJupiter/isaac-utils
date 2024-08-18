@@ -1,7 +1,8 @@
 import { invoke } from '@tauri-apps/api/core';
-import { check } from '@tauri-apps/plugin-updater';
+import { check, Update } from '@tauri-apps/plugin-updater';
 import { ask, message } from '@tauri-apps/plugin-dialog';
 import { addAlert } from '../stores/alert';
+import { relaunch } from '@tauri-apps/plugin-process';
 
 export async function copy(value: string | number, alert: boolean) {
     const success = await invoke<boolean>('c_copy', { value: `${value}` });
@@ -22,20 +23,21 @@ export async function copy(value: string | number, alert: boolean) {
 }
 
 export async function checkForAppUpdates(onUserClick: boolean = false) {
-    // If failed to check for updates.
-    const update = await check();
-    if (update === null) {
-        await message('Failed to check for updates.\nPlease try again later.', {
-            title: 'Error',
+    // Try to check for update.
+    let update: Update | null = null;
+    try {
+        update = await check();
+    } catch (e) {
+        await message(`Error: ${e}`, {
+            title: 'Failed Checking for Update',
             kind: 'error',
             okLabel: 'OK',
         });
-
         return;
     }
 
     // If no update.
-    if (!update?.available && onUserClick) {
+    if (update === null) {
         if (onUserClick) {
             await message('You are on the latest version.', {
                 title: 'No Update Available',
@@ -59,6 +61,6 @@ export async function checkForAppUpdates(onUserClick: boolean = false) {
     );
     if (yes) {
         await update.downloadAndInstall();
-        await invoke('graceful_restart');
+        await relaunch();
     }
 }
