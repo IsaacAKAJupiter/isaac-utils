@@ -30,6 +30,12 @@
         "shell:default",
         "clipboard-manager:default",
         "fs:default",
+        "dialog:default",
+        "dialog:allow-ask",
+        "dialog:allow-message",
+        "updater:default",
+        "updater:allow-check",
+        "updater:allow-download-and-install",
         {
             "identifier": "fs:allow-exists",
             "allow": [
@@ -61,7 +67,6 @@
                     "path": "$APPDATA/*"
                 }
             ]
-        },
-        "updater:default"
+        }
     ]
 }

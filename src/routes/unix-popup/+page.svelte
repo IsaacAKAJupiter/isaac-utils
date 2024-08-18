@@ -18,7 +18,7 @@
     } | null = null;
     let displayDiv: HTMLDivElement;
 
-    async function updateWindowProperties(config: Config) {
+    async function updateWindowProperties() {
         // Wait for svelte to update UI.
         await tick();
 
@@ -49,7 +49,7 @@
             currentDisplay = { unix: payload.number, formatted, fetchedIn };
 
             // Update window properties.
-            updateWindowProperties(payload.config);
+            updateWindowProperties();
         });
 
         (displayDiv.children[0] as HTMLDivElement).style.width =

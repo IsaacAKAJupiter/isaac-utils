@@ -4,50 +4,78 @@
         register,
         isRegistered,
         type ShortcutEvent,
+        unregisterAll,
     } from '@tauri-apps/plugin-global-shortcut';
     import { onDestroy, onMount } from 'svelte';
     import { fade } from 'svelte/transition';
     import UnixBase from '../../components/unix/base.svelte';
-    import { getConfig } from '../../util/config';
-    import type { UnlistenFn } from '@tauri-apps/api/event';
+    import { listen, type UnlistenFn } from '@tauri-apps/api/event';
     import { window } from '@tauri-apps/api';
     import { isMinimized } from '../../stores/main-window';
     import Alerts from '../../components/alerts/alerts.svelte';
     import Sidenav from '../../components/sidenav.svelte';
+    import { configStore, configShortcutLastChange } from '../../stores/config';
+    import type { Unsubscriber } from 'svelte/store';
+    import { checkForAppUpdates } from '../../util/tauri';
+    import { getConfig } from '../../util/config';
 
-    let config: { [key: string]: any };
     let page: string = 'unix';
     let onResizeUnlisten: UnlistenFn;
+    let updateCheckUnlisten: UnlistenFn;
+    let configShortcutChangeUnsubscriber: Unsubscriber;
 
     function onUnixToReadableShortcut(event: ShortcutEvent) {
+        if (!$configStore) return;
+
         if (event.state === 'Released') {
-            invoke('c_unix_to_readable', { config });
+            invoke('c_unix_to_readable', { config: $configStore });
         }
     }
 
     async function registerShortcuts() {
+        if (!$configStore) return;
+
         // Unix to readable shortcut.
-        if (!(await isRegistered(config.shortcuts.unixToReadable))) {
+        if (!(await isRegistered($configStore.shortcuts.unixToReadable))) {
             await register(
-                config.shortcuts.unixToReadable,
+                $configStore.shortcuts.unixToReadable,
                 onUnixToReadableShortcut
             );
         }
     }
 
+    async function reregisterShortcuts() {
+        // Unregister, register.
+        await unregisterAll();
+        await registerShortcuts();
+    }
+
     onMount(async () => {
-        config = await getConfig();
+        await getConfig();
         await registerShortcuts();
 
+        // Listen for shortcut changes.
+        configShortcutChangeUnsubscriber =
+            configShortcutLastChange.subscribe(reregisterShortcuts);
+
+        // Listen to resize change to get minimized boolean.
         const currentWindow = window.getCurrentWindow();
         isMinimized.set(await currentWindow.isMinimized());
         onResizeUnlisten = await currentWindow.onResized(async () => {
             isMinimized.set(await currentWindow.isMinimized());
         });
+
+        // Listen for update check.
+        checkForAppUpdates(false);
+        updateCheckUnlisten = await listen('e_check_for_update', () => {
+            checkForAppUpdates(true);
+        });
     });
 
     onDestroy(() => {
         onResizeUnlisten?.();
+        updateCheckUnlisten?.();
+        configShortcutChangeUnsubscriber?.();
     });
 </script>
 

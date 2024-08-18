@@ -10,7 +10,7 @@
         parseDateTimeIntoTimestamp,
         type DateFormat,
     } from '../../../util/date';
-    import config from '../../../stores/config';
+    import { configStore } from '../../../stores/config';
     import { addAlert } from '../../../stores/alert';
     import { defaultConfig } from '../../../util/config';
     import { copy } from '../../../util/tauri';
@@ -46,7 +46,10 @@
         await tick();
 
         // Set to new formatted.
-        timeStampConverted = getFormattedDate(n, $config || defaultConfig());
+        timeStampConverted = getFormattedDate(
+            n,
+            $configStore || defaultConfig()
+        );
     }
 
     async function convertDate(dateTime: string, timeZone: string) {
@@ -94,8 +97,8 @@
     onMount(() => {
         // Get list of time zones and current time zone.
         timeZones = getAvailableTimeZones().concat(['UTC / GMT']);
-        timeZone = $config?.unix?.timeZone ?? getUserTimeZone();
-        last24hTz = $config?.unix?.timeZone ?? getUserTimeZone();
+        timeZone = $configStore?.unix?.timeZone ?? getUserTimeZone();
+        last24hTz = $configStore?.unix?.timeZone ?? getUserTimeZone();
         timeStamp = Date.now();
         dateTime = nowDateTimeInputValue();
         last24hDate = nowDateInputValue();
@@ -271,6 +274,21 @@
                             class="cursor-pointer"
                             on:click={() =>
                                 copy(last24hConverted?.end ?? 0, true)}
+                        >
+                            <Icon name="copy"></Icon>
+                        </button>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <p>
+                            SQL Between: {last24hConverted.start} AND {last24hConverted.end}
+                        </p>
+                        <button
+                            class="cursor-pointer"
+                            on:click={() =>
+                                copy(
+                                    `${last24hConverted?.start ?? 0} AND ${last24hConverted?.end ?? 0}`,
+                                    true
+                                )}
                         >
                             <Icon name="copy"></Icon>
                         </button>

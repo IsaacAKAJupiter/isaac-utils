@@ -11,6 +11,7 @@ use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Emitter, Manager,
 };
+use tauri_plugin_global_shortcut::Shortcut;
 
 #[tauri::command]
 fn c_unix_to_readable(config: serde_json::Map<String, serde_json::Value>, app: AppHandle) {
@@ -42,12 +43,20 @@ fn c_copy(value: String) -> bool {
     }
 }
 
+#[tauri::command]
+fn c_valid_shortcut(shortcut: String) -> bool {
+    let result = Shortcut::try_from(shortcut.as_str());
+    result.is_ok()
+}
+
 fn make_tray(app: &tauri::App) -> Result<(), tauri::Error> {
     let show_hide = MenuItemBuilder::with_id("show_hide", "Show/Hide").build(app)?;
     let divider = PredefinedMenuItem::separator(app)?;
+    let check_for_update =
+        MenuItemBuilder::with_id("check_for_update", "Check for Update").build(app)?;
     let quit = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
     let menu = MenuBuilder::new(app)
-        .items(&[&show_hide, &divider, &quit])
+        .items(&[&show_hide, &divider, &check_for_update, &quit])
         .build()?;
     let _tray = TrayIconBuilder::new()
         .menu(&menu)
@@ -60,6 +69,11 @@ fn make_tray(app: &tauri::App) -> Result<(), tauri::Error> {
                         let _ = window.show();
                         let _ = window.center();
                     }
+                }
+            }
+            "check_for_update" => {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.emit("e_check_for_update", json!({}));
                 }
             }
             "quit" => {
@@ -96,6 +110,7 @@ fn show_main_window(app: &AppHandle) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
@@ -104,7 +119,11 @@ pub fn run() {
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             let _ = show_main_window(app);
         }))
-        .invoke_handler(tauri::generate_handler![c_unix_to_readable, c_copy])
+        .invoke_handler(tauri::generate_handler![
+            c_unix_to_readable,
+            c_copy,
+            c_valid_shortcut
+        ])
         .setup(|app| {
             let _ = make_tray(&app);
 

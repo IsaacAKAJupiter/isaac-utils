@@ -1,5 +1,5 @@
 import { getUserTimeZone } from './date';
-import configStore from '../stores/config';
+import { configStore } from '../stores/config';
 import {
     BaseDirectory,
     exists,
@@ -10,16 +10,18 @@ import {
 import { extendObject } from './object';
 import isEqual from 'lodash.isequal';
 
+export type ConfigUnixFetchFormat =
+    | 'auto'
+    | 'seconds'
+    | 'milliseconds'
+    | 'microseconds'
+    | 'nanoseconds';
+
 export interface Config {
     locale: string;
     shortcuts: { unixToReadable: string };
     unix: {
-        fetchFormat:
-            | 'auto'
-            | 'seconds'
-            | 'milliseconds'
-            | 'microseconds'
-            | 'nanoseconds';
+        fetchFormat: ConfigUnixFetchFormat;
         timeZone: string;
     };
 }
@@ -32,7 +34,7 @@ export function defaultConfig(): Config {
     return {
         locale: 'en',
         shortcuts: {
-            unixToReadable: 'CommandOrControl+Q',
+            unixToReadable: 'CmdOrCtrl+Q',
         },
         unix: {
             fetchFormat: 'auto',
@@ -41,7 +43,7 @@ export function defaultConfig(): Config {
     };
 }
 
-export async function writeConfig(config: { [key: string]: any }) {
+export async function writeConfig(config: Config) {
     const dirExists = await exists('', {
         baseDir: BaseDirectory.AppData,
     });
@@ -85,4 +87,8 @@ export async function getConfig() {
 function setStoreAndReturnConfig(config: Config) {
     configStore.set(config);
     return config;
+}
+
+export function getConfigCopy(config: Config) {
+    return JSON.parse(JSON.stringify(config)) as Config;
 }
