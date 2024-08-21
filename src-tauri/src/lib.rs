@@ -4,7 +4,10 @@
 mod get_selection;
 
 use arboard::Clipboard;
+use futures::future::join_all;
+use ipnet::Ipv4Net;
 use serde_json::json;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tauri::{
     include_image,
     menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem},
@@ -12,6 +15,17 @@ use tauri::{
     AppHandle, Emitter, Manager,
 };
 use tauri_plugin_global_shortcut::Shortcut;
+use tokio::net::TcpStream;
+
+async fn scan_port(target: Ipv4Addr, port: u16, timeout: u64) -> (Ipv4Addr, bool) {
+    let timeout = tokio::time::Duration::from_secs(timeout);
+    let socket_address = SocketAddr::new(IpAddr::V4(target), port);
+
+    match tokio::time::timeout(timeout, TcpStream::connect(&socket_address)).await {
+        Ok(Ok(_)) => (target, true),
+        _ => (target, false),
+    }
+}
 
 #[tauri::command]
 fn c_unix_to_readable(config: serde_json::Map<String, serde_json::Value>, app: AppHandle) {
@@ -47,6 +61,38 @@ fn c_copy(value: String) -> bool {
 fn c_valid_shortcut(shortcut: String) -> bool {
     let result = Shortcut::try_from(shortcut.as_str());
     result.is_ok()
+}
+
+#[tauri::command]
+async fn c_check_ports() -> serde_json::Value {
+    match netdev::get_default_interface() {
+        Ok(interface) => {
+            if interface.ipv4.is_empty() {
+                return json!({"results": null});
+            }
+
+            println!("Default Interface:");
+            println!("\tIPv4: {:?}", interface.ipv4);
+            println!("\tIP: {:?}", interface.ipv4[0].addr);
+            println!("\tSubnet Mask: {:?}", interface.ipv4[0].netmask);
+            println!("\tPrefix Len: {:?}", interface.ipv4[0].prefix_len);
+
+            match Ipv4Net::new(interface.ipv4[0].addr, interface.ipv4[0].prefix_len) {
+                Ok(nw) => {
+                    let results = join_all(nw.hosts().map(|host| scan_port(host, 8888, 1))).await;
+                    return json!({"results": results});
+                }
+                Err(e) => {
+                    println!("NW Error: {}", e);
+                }
+            }
+        }
+        Err(e) => {
+            println!("Error: {}", e);
+        }
+    }
+
+    json!({"results": null})
 }
 
 fn make_tray(app: &tauri::App) -> Result<(), tauri::Error> {
@@ -123,7 +169,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             c_unix_to_readable,
             c_copy,
-            c_valid_shortcut
+            c_valid_shortcut,
+            c_check_ports
         ])
         .setup(|app| {
             let _ = make_tray(&app);
