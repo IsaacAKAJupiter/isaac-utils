@@ -17,6 +17,7 @@
     import Icon from '../../icon.svelte';
     import { DateTime } from 'luxon';
 
+    // Conversion variables.
     let timeZones: string[];
 
     // Timestamp.

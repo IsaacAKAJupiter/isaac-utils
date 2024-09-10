@@ -24,8 +24,8 @@
     onMount(() => {
         initInterval();
 
-        // Subscribe to minimised to
-        isMinimized.subscribe((value) => {
+        // Subscribe to minimised to pause the interval for current unix times.
+        minimizedUnsubscriber = isMinimized.subscribe((value) => {
             // If minimized, clear interval.
             if (value) {
                 clearInterval(interval);
