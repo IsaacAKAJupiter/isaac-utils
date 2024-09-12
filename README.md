@@ -16,7 +16,11 @@ This is a rough draft for local building requirements. Also does not include the
 - Run `pnpm i`.
 - Run `pnpm build`.
 
-### Fedora
+### Linux
+
+- Note, you may need to use `pnpm build:nostrip` instead of `pnpm build` for linux due to the AppImage error which is due to [this issue](https://github.com/linuxdeploy/linuxdeploy/issues/272).
+
+#### Fedora
 
 - Install rust, node, and pnpm.
 - Run `pnpm i`.
@@ -26,7 +30,7 @@ This is a rough draft for local building requirements. Also does not include the
   - `sudo dnf group install "C Development Tools and Libraries"`
 - Run `pnpm build`.
 
-### Debian
+#### Debian
 
 - Install rust, node, and pnpm.
 - Run `pnpm i`.
