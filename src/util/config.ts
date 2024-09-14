@@ -45,10 +45,10 @@ export function defaultConfig(): Config {
 
 export async function writeConfig(config: Config) {
     const dirExists = await exists('', {
-        baseDir: BaseDirectory.AppData,
+        baseDir: BaseDirectory.AppConfig,
     });
     if (!dirExists) {
-        await mkdir('', { baseDir: BaseDirectory.AppData });
+        await mkdir('', { baseDir: BaseDirectory.AppConfig });
     }
 
     await writeTextFile('config.json', JSON.stringify(config), {

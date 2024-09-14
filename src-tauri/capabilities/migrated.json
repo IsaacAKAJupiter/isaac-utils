@@ -43,7 +43,7 @@
             "identifier": "fs:allow-exists",
             "allow": [
                 {
-                    "path": "$APPDATA/*"
+                    "path": "$APPCONFIG/*"
                 }
             ]
         },
@@ -51,7 +51,7 @@
             "identifier": "fs:allow-read-text-file",
             "allow": [
                 {
-                    "path": "$APPDATA/*"
+                    "path": "$APPCONFIG/*"
                 }
             ]
         },
@@ -59,7 +59,7 @@
             "identifier": "fs:allow-write-text-file",
             "allow": [
                 {
-                    "path": "$APPDATA/*"
+                    "path": "$APPCONFIG/*"
                 }
             ]
         },
@@ -67,7 +67,7 @@
             "identifier": "fs:allow-mkdir",
             "allow": [
                 {
-                    "path": "$APPDATA/*"
+                    "path": "$APPCONFIG/*"
                 }
             ]
         }
