@@ -5,9 +5,11 @@ mod get_selection;
 
 use arboard::Clipboard;
 use futures::future::join_all;
+use futures::{SinkExt, StreamExt};
 use ipnet::Ipv4Net;
 use serde_json::json;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use tauri::Listener;
 use tauri::{
     include_image,
     menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem},
@@ -15,7 +17,11 @@ use tauri::{
     AppHandle, Emitter, Manager,
 };
 use tauri_plugin_global_shortcut::Shortcut;
-use tokio::net::TcpStream;
+use tokio::net::{TcpListener, TcpStream};
+use tokio_tungstenite::{
+    accept_async,
+    tungstenite::{Error, Message, Result},
+};
 
 async fn scan_port(target: Ipv4Addr, port: u16, timeout: u64) -> (Ipv4Addr, bool) {
     let timeout = tokio::time::Duration::from_secs(timeout);
@@ -25,6 +31,134 @@ async fn scan_port(target: Ipv4Addr, port: u16, timeout: u64) -> (Ipv4Addr, bool
         Ok(Ok(_)) => (target, true),
         _ => (target, false),
     }
+}
+
+async fn accept_connection(peer: SocketAddr, stream: TcpStream, app: &AppHandle) {
+    if let Err(e) = handle_connection(peer, stream, app).await {
+        match e {
+            Error::ConnectionClosed | Error::Protocol(_) | Error::Utf8 => (),
+            err => println!("Error processing connection: {}", err),
+        }
+    }
+}
+
+async fn handle_connection(peer: SocketAddr, stream: TcpStream, app: &AppHandle) -> Result<()> {
+    let ws_stream = accept_async(stream).await.expect("Failed to accept");
+    println!("New WebSocket connection: {}", peer);
+    let (mut ws_sender, mut ws_receiver) = ws_stream.split();
+    let mut interval = tokio::time::interval(std::time::Duration::from_millis(1000));
+
+    // State variables.
+    let available_states = ["file", "text"];
+    let mut state = "".to_string();
+
+    // File variables.
+    let mut file_name = "".to_string();
+    let mut file_size = -1 as i64;
+
+    loop {
+        tokio::select! {
+            msg = ws_receiver.next() => {
+                match msg {
+                    Some(msg) => {
+                        let msg = msg?;
+                        if msg.is_close() {
+                            break;
+                        }
+
+                        let msg_text = if msg.is_text() {msg.to_string()} else {"".to_string()};
+
+                        // If no state and not a text message, ignore it.
+                        if state == "" && !msg.is_text() {
+                            continue;
+                        }
+
+                        // If no state, make sure the message is a string and a valid state.
+                        if state == "" && msg.is_text() {
+                            let msg_text_str = msg_text.as_str();
+                            let state_index = available_states.iter().position(|&r| r == msg_text_str);
+                            if state_index.is_some() {
+                                state = msg_text;
+                            }
+                            continue;
+                        }
+
+                        // If file state, look for file name/size.
+                        if state == "file" && msg.is_text() && file_size == -1 {
+                            let msg_split: Vec<_> = msg_text.split("<|>").collect();
+                            if msg_split.len() != 2 {
+                                println!("Invalid msg sent: {}", msg_text);
+                                continue;
+                            }
+
+                            // Parse the file size.
+                            let parsed = msg_split[1].trim().parse::<i64>();
+                            if parsed.is_err() {
+                                println!("Invalid file size sent with message: {}", msg_text);
+                                continue;
+                            }
+
+                            // Set the name and size.
+                            file_name = msg_split[0].to_string();
+                            file_size = parsed.unwrap();
+
+                            if let Some(window) = app.get_webview_window("main") {
+                                // Ask if we want the file.
+                                let _ = window.emit("e_p2p", json!({
+                                    "event": "ask_file",
+                                    "data": {
+                                        "file_name": file_name,
+                                        "file_size": file_size,
+                                        "peer": peer
+                                    }
+                                }));
+
+                                // Wait for the file response.
+                                window.once("e_p2p_ask_file", |event| {
+                                    // If not allowed.
+                                    // if !event.data {
+                                    //     file_name = "".to_string();
+                                    //     file_size = -1;
+                                    //     return
+                                    // }
+
+                                    println!("{}", event.payload());
+
+                                    // If allowed, send the event to the peer that we are good to send.
+                                    // ws_sender.send(Message::Text("1".to_owned())).await?;
+                                });
+                            }
+
+                            continue;
+                        }
+
+                        // If in a file state and looking for data.
+                        if state == "file" && file_size != -1 {
+                            // If not binary, continue.
+                            if !msg.is_binary() {
+                                continue;
+                            }
+
+                            // TODO: Handle binary data.
+                        }
+
+                        // Send the data to the main window.
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.emit("e_random_message", json!({
+                                "msg": msg.into_text().unwrap_or("could not convert message into text".to_string())
+                            }));
+                        }
+                    }
+                    None => break,
+                }
+            }
+            _ = interval.tick() => {
+                ws_sender.send(Message::Text("tick".to_owned())).await?;
+            }
+        }
+    }
+
+    Ok(())
 }
 
 #[tauri::command]
@@ -174,6 +308,23 @@ pub fn run() {
         ])
         .setup(|app| {
             let _ = make_tray(&app);
+
+            let handler_clone = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                let handler_clone = handler_clone.to_owned();
+                let addr = "0.0.0.0:15446";
+                let listener = TcpListener::bind(&addr).await.expect("Can't listen.");
+                println!("Listening on: {}", addr);
+
+                while let Ok((stream, _)) = listener.accept().await {
+                    let peer = stream
+                        .peer_addr()
+                        .expect("connected streams should have a peer address");
+                    println!("Peer address: {}", peer);
+
+                    let _ = accept_connection(peer, stream, &handler_clone).await;
+                }
+            });
 
             // Uncomment below to automatically open devtools for the unix popup window.
             // #[cfg(debug_assertions)]

@@ -25,6 +25,7 @@ ipnet = { version = "2", features = ["serde"] }
 tokio = { version = "1", features = ["full"] }
 futures = "0.3"
 arboard = "3.4.0"
+tokio-tungstenite = "*"
 
 [features]
 # This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!
