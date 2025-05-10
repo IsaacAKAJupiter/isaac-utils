@@ -8,6 +8,8 @@ use futures::future::join_all;
 use futures::{SinkExt, StreamExt};
 use ipnet::Ipv4Net;
 use serde_json::json;
+use std::fs::OpenOptions;
+use std::io::Write;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tauri::Listener;
 use tauri::{
@@ -18,6 +20,7 @@ use tauri::{
 };
 use tauri_plugin_global_shortcut::Shortcut;
 use tokio::net::{TcpListener, TcpStream};
+use tokio_tungstenite::tungstenite::Utf8Bytes;
 use tokio_tungstenite::{
     accept_async,
     tungstenite::{Error, Message, Result},
@@ -53,8 +56,11 @@ async fn handle_connection(peer: SocketAddr, stream: TcpStream, app: &AppHandle)
     let mut state = "".to_string();
 
     // File variables.
-    let mut file_name = "".to_string();
+    let mut original_file_name = "".to_string();
     let mut file_size = -1 as i64;
+    let mut file_processed = 0 as usize;
+    let mut file_save_path = "C:\\Users\\Owner\\Downloads\\testingfiletauri.zip".to_string();
+    let mut file_ready_for_data = true;
 
     loop {
         tokio::select! {
@@ -99,15 +105,16 @@ async fn handle_connection(peer: SocketAddr, stream: TcpStream, app: &AppHandle)
                             }
 
                             // Set the name and size.
-                            file_name = msg_split[0].to_string();
+                            original_file_name = msg_split[0].to_string();
                             file_size = parsed.unwrap();
+                            file_processed = 0;
 
                             if let Some(window) = app.get_webview_window("main") {
                                 // Ask if we want the file.
                                 let _ = window.emit("e_p2p", json!({
                                     "event": "ask_file",
                                     "data": {
-                                        "file_name": file_name,
+                                        "file_name": original_file_name,
                                         "file_size": file_size,
                                         "peer": peer
                                     }
@@ -134,26 +141,62 @@ async fn handle_connection(peer: SocketAddr, stream: TcpStream, app: &AppHandle)
 
                         // If in a file state and looking for data.
                         if state == "file" && file_size != -1 {
-                            // If not binary, continue.
-                            if !msg.is_binary() {
+                            // If not binary or not ready for data, continue.
+                            if !msg.is_binary() || !file_ready_for_data {
                                 continue;
                             }
 
-                            // TODO: Handle binary data.
+                            // Write the .
+                            let data = msg.into_data();
+                            let data_len = data.len();
+                            file_processed += data_len;
+                            println!("datalen: {}, processed: {}, total: {}", data_len, file_processed, file_size);
+
+                            // Write the data.
+                            if let Ok(mut file) = OpenOptions::new()
+                                .create(true)
+                                .append(true)
+                                .open(&file_save_path) {
+                                    let mut file = std::io::BufWriter::new(file);
+                                    let result = file.write_all(&data);
+                                    file.flush()?;
+
+                                    if let Some(window) = app.get_webview_window("main") {
+                                        let _ = window.emit("e_p2p", json!({
+                                            "event": "file_data",
+                                            "data": {
+                                                "chunk_size": data_len,
+                                                "total_processed": file_processed,
+                                                "successful_write": result.is_ok()
+                                            }
+                                        }));
+                                    }
+                                }
+
+                            continue;
                         }
 
-                        // Send the data to the main window.
-                        if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.emit("e_random_message", json!({
-                                "msg": msg.into_text().unwrap_or("could not convert message into text".to_string())
-                            }));
+                        // Handle normal text data.
+                        if state == "text" && msg.is_text() {
+                            // Send the data to the main window.
+                            if let Some(window) = app.get_webview_window("main") {
+                                let _ = window.emit("e_p2p", json!({
+                                    "event": "text_received",
+                                    "data": {
+                                        "text": msg_text,
+                                        "peer": peer
+                                    }
+                                }));
+                            }
+
+                            continue;
                         }
                     }
                     None => break,
                 }
             }
             _ = interval.tick() => {
-                ws_sender.send(Message::Text("tick".to_owned())).await?;
+                ws_sender.send(Message::Text(Utf8Bytes::from("tick"))).await?;
             }
         }
     }

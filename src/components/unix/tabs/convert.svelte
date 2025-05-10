@@ -1,6 +1,10 @@
 <script lang="ts">
+    import { DateTime } from 'luxon';
     import { onMount, tick } from 'svelte';
     import { fade } from 'svelte/transition';
+    import { addAlert } from '../../../stores/alert';
+    import { configStore } from '../../../stores/config';
+    import { defaultConfig } from '../../../util/config';
     import {
         getAvailableTimeZones,
         getFormattedDate,
@@ -10,12 +14,8 @@
         parseDateTimeIntoTimestamp,
         type DateFormat,
     } from '../../../util/date';
-    import { configStore } from '../../../stores/config';
-    import { addAlert } from '../../../stores/alert';
-    import { defaultConfig } from '../../../util/config';
     import { copy } from '../../../util/tauri';
     import Icon from '../../icon.svelte';
-    import { DateTime } from 'luxon';
 
     // Conversion variables.
     let timeZones: string[];
@@ -66,7 +66,7 @@
 
         // Parse.
         const parsedMS = parseDateTimeIntoTimestamp(dateTime, timeZone);
-        const parsedS = Math.floor(parsedMS);
+        const parsedS = Math.floor(parsedMS / 1000);
         dateTimeConverted = { s: parsedS, ms: parsedMS };
     }
 

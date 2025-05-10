@@ -1,23 +1,23 @@
 <script lang="ts">
+    import { window } from '@tauri-apps/api';
     import { invoke } from '@tauri-apps/api/core';
+    import { listen, type UnlistenFn } from '@tauri-apps/api/event';
     import {
-        register,
         isRegistered,
+        register,
         type ShortcutEvent,
         unregisterAll,
     } from '@tauri-apps/plugin-global-shortcut';
     import { onDestroy, onMount } from 'svelte';
+    import type { Unsubscriber } from 'svelte/store';
     import { fade } from 'svelte/transition';
-    import UnixBase from '../../components/unix/base.svelte';
-    import { listen, type UnlistenFn } from '@tauri-apps/api/event';
-    import { window } from '@tauri-apps/api';
-    import { isMinimized } from '../../stores/main-window';
     import Alerts from '../../components/alerts/alerts.svelte';
     import Sidenav from '../../components/sidenav.svelte';
-    import { configStore, configShortcutLastChange } from '../../stores/config';
-    import type { Unsubscriber } from 'svelte/store';
-    import { checkForAppUpdates } from '../../util/tauri';
+    import UnixBase from '../../components/unix/base.svelte';
+    import { configShortcutLastChange, configStore } from '../../stores/config';
+    import { isMinimized } from '../../stores/main-window';
     import { getConfig } from '../../util/config';
+    import { checkForAppUpdates } from '../../util/tauri';
 
     let page: string = 'unix';
     let onResizeUnlisten: UnlistenFn;
