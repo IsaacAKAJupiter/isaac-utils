@@ -1,28 +1,28 @@
 <script lang="ts">
+    import { invoke } from '@tauri-apps/api/core';
     import { onMount } from 'svelte';
+    import { addAlert } from '../../../stores/alert';
     import {
-        configStore,
         configShortcutLastChange,
+        configStore,
     } from '../../../stores/config';
     import {
         defaultConfig,
-        writeConfig,
         getConfigCopy,
-        type Config,
+        writeConfig,
         type ConfigUnixFetchFormat,
     } from '../../../util/config';
-    import { addAlert } from '../../../stores/alert';
-    import { invoke } from '@tauri-apps/api/core';
     import { getAvailableTimeZones, getUserTimeZone } from '../../../util/date';
 
     // Variables.
-    let unixToReadableShortcut: string =
-        defaultConfig().shortcuts.unixToReadable;
-    let changingShortcut: boolean = false;
+    let unixToReadableShortcut: string = $state(
+        defaultConfig().shortcuts.unixToReadable
+    );
+    let changingShortcut: boolean = $state(false);
     let savingShortcut: boolean = false;
-    let timeZones: string[];
-    let timeZone: string;
-    let fetchFormat: ConfigUnixFetchFormat;
+    let timeZones: string[] = $state([]);
+    let timeZone: string = $state(getUserTimeZone());
+    let fetchFormat: ConfigUnixFetchFormat = $state('auto');
 
     async function handleKeyEvent(event: KeyboardEvent) {
         event.stopPropagation();
@@ -143,7 +143,7 @@
     });
 </script>
 
-<svelte:window on:keydown={(e) => changingShortcut && handleKeyEvent(e)} />
+<svelte:window onkeydown={(e) => changingShortcut && handleKeyEvent(e)} />
 
 <div class="p-4 bg-accent">
     <div class="mb-8">
@@ -160,11 +160,11 @@
                     {unixToReadableShortcut || 'Waiting for shortcut...'}
                 </p>
                 {#if !changingShortcut}
-                    <button class="main-btn" on:click={changeShortcut}>
+                    <button class="main-btn" onclick={changeShortcut}>
                         Update
                     </button>
                 {:else}
-                    <button class="red-btn" on:click={resetShortcut}>
+                    <button class="red-btn" onclick={resetShortcut}>
                         Cancel
                     </button>
                 {/if}
@@ -180,7 +180,7 @@
                         type="text"
                         list="timeZones"
                         bind:value={timeZone}
-                        on:change={saveTimeZone}
+                        onchange={saveTimeZone}
                     />
                     {#if timeZones}
                         <datalist id="timeZones">
@@ -205,7 +205,7 @@
                     <select
                         class="input"
                         bind:value={fetchFormat}
-                        on:change={saveFetchFormat}
+                        onchange={saveFetchFormat}
                     >
                         <option value="auto">Auto</option>
                         <option value="seconds">Seconds</option>

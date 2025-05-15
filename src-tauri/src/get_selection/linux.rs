@@ -2,7 +2,7 @@ use std::env::var;
 use std::error::Error;
 use std::io::Read;
 use std::time::Duration;
-use wl_clipboard_rs::paste::{get_contents, ClipboardType, MimeType, Seat};
+use wl_clipboard_rs::paste::{ClipboardType, MimeType, Seat, get_contents};
 use wl_clipboard_rs::utils::is_primary_selection_supported;
 use x11_clipboard::Clipboard;
 

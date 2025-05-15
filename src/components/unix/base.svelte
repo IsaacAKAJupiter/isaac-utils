@@ -9,8 +9,8 @@
     import Tabs from '../tabs.svelte';
 
     let interval: number;
-    let nowMS: number = Date.now();
-    let nowS: number = Math.floor(Date.now() / 1000);
+    let nowMS: number = $state(Date.now());
+    let nowS: number = $state(Math.floor(Date.now() / 1000));
     let minimizedUnsubscriber: Unsubscriber;
 
     function initInterval() {
@@ -52,7 +52,7 @@
                 <p class="text-xs">seconds</p>
                 <button
                     class="cursor-pointer"
-                    on:click={() => copy(nowS, true)}
+                    onclick={() => copy(nowS, true)}
                 >
                     <Icon name="copy"></Icon>
                 </button>
@@ -64,7 +64,7 @@
                 <p class="text-xs">milliseconds</p>
                 <button
                     class="cursor-pointer"
-                    on:click={() => copy(nowMS, true)}
+                    onclick={() => copy(nowMS, true)}
                 >
                     <Icon name="copy"></Icon>
                 </button>

@@ -14,12 +14,13 @@
     import Alerts from '../../components/alerts/alerts.svelte';
     import Sidenav from '../../components/sidenav.svelte';
     import UnixBase from '../../components/unix/base.svelte';
+    import UUIDBase from '../../components/uuid/base.svelte';
     import { configShortcutLastChange, configStore } from '../../stores/config';
     import { isMinimized } from '../../stores/main-window';
     import { getConfig } from '../../util/config';
     import { checkForAppUpdates } from '../../util/tauri';
 
-    let page: string = 'unix';
+    let page = $state<string>('unix');
     let onResizeUnlisten: UnlistenFn;
     let updateCheckUnlisten: UnlistenFn;
     let configShortcutChangeUnsubscriber: Unsubscriber;
@@ -93,12 +94,16 @@
 <Alerts />
 
 <div class="flex">
-    <Sidenav on:page={(p) => (page = p.detail)} />
+    <Sidenav page={(p) => (page = p)} />
 
     <main class="flex-1">
         {#if page == 'unix'}
             <div in:fade out:fade>
-                <UnixBase></UnixBase>
+                <UnixBase />
+            </div>
+        {:else if page == 'uuid'}
+            <div in:fade out:fade>
+                <UUIDBase />
             </div>
         {/if}
     </main>

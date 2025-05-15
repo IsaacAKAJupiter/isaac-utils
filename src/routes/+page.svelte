@@ -2,6 +2,7 @@
     import { goto } from '$app/navigation';
     import { getCurrentWindow } from '@tauri-apps/api/window';
     import { onMount } from 'svelte';
+    import Loader from '../components/loader.svelte';
 
     onMount(async () => {
         const label = getCurrentWindow().label;
@@ -19,7 +20,4 @@
     });
 </script>
 
-<p>routing...</p>
-
-<style>
-</style>
+<Loader />

@@ -18,28 +18,28 @@
     import Icon from '../../icon.svelte';
 
     // Conversion variables.
-    let timeZones: string[];
+    let timeZones = $state<string[]>(
+        getAvailableTimeZones().concat(['UTC / GMT'])
+    );
 
     // Timestamp.
-    let timeStamp: number;
-    let timeStampConverted:
-        | {
-              formatted: string;
-              fetchedIn: DateFormat;
-          }
-        | undefined;
+    let timeStamp = $state<number>(Date.now());
+    let timeStampConverted = $state<{
+        formatted: string;
+        fetchedIn: DateFormat;
+    }>();
 
     // Date time.
-    let dateTime: any;
-    let timeZone: string;
-    let dateTimeConverted: { s: number; ms: number } | undefined;
+    let dateTime = $state<any>();
+    let timeZone = $state<string>(getUserTimeZone());
+    let dateTimeConverted = $state<{ s: number; ms: number }>();
 
     // Last 24h.
-    let last24hDate: string;
-    let last24hTime: string;
-    let last24hTz: string;
-    let last24hDisplayType: 'seconds' | 'milliseconds' = 'milliseconds';
-    let last24hConverted: { start: number; end: number } | undefined;
+    let last24hDate = $state<string>();
+    let last24hTime = $state<string>('22:59');
+    let last24hTz = $state<string>(getUserTimeZone());
+    let last24hDisplayType = $state<'seconds' | 'milliseconds'>('milliseconds');
+    let last24hConverted = $state<{ start: number; end: number }>();
 
     async function convertTimestamp(n: number) {
         // Reset.
@@ -97,13 +97,10 @@
 
     onMount(() => {
         // Get list of time zones and current time zone.
-        timeZones = getAvailableTimeZones().concat(['UTC / GMT']);
         timeZone = $configStore?.unix?.timeZone ?? getUserTimeZone();
         last24hTz = $configStore?.unix?.timeZone ?? getUserTimeZone();
-        timeStamp = Date.now();
         dateTime = nowDateTimeInputValue();
         last24hDate = nowDateInputValue();
-        last24hTime = '22:59';
     });
 </script>
 
@@ -125,7 +122,7 @@
             </div>
             <button
                 class="main-btn"
-                on:click={() => convertTimestamp(timeStamp)}
+                onclick={() => convertTimestamp(timeStamp)}
             >
                 Convert
             </button>
@@ -172,7 +169,7 @@
             </div>
             <button
                 class="main-btn"
-                on:click={() => convertDate(dateTime, timeZone)}
+                onclick={() => convertDate(dateTime, timeZone)}
             >
                 Convert
             </button>
@@ -185,7 +182,7 @@
                         <p>In Seconds: {dateTimeConverted.s}</p>
                         <button
                             class="cursor-pointer"
-                            on:click={() =>
+                            onclick={() =>
                                 copy(dateTimeConverted?.s ?? 0, true)}
                         >
                             <Icon name="copy"></Icon>
@@ -195,7 +192,7 @@
                         <p>In Milliseconds: {dateTimeConverted.ms}</p>
                         <button
                             class="cursor-pointer"
-                            on:click={() =>
+                            onclick={() =>
                                 copy(dateTimeConverted?.ms ?? 0, true)}
                         >
                             <Icon name="copy"></Icon>
@@ -251,7 +248,7 @@
                     </select>
                 </div>
             </div>
-            <button class="main-btn" on:click={convertLast24Hour}>
+            <button class="main-btn" onclick={convertLast24Hour}>
                 Convert
             </button>
         </div>
@@ -263,7 +260,7 @@
                         <p>Start: {last24hConverted.start}</p>
                         <button
                             class="cursor-pointer"
-                            on:click={() =>
+                            onclick={() =>
                                 copy(last24hConverted?.start ?? 0, true)}
                         >
                             <Icon name="copy"></Icon>
@@ -273,7 +270,7 @@
                         <p>End: {last24hConverted.end}</p>
                         <button
                             class="cursor-pointer"
-                            on:click={() =>
+                            onclick={() =>
                                 copy(last24hConverted?.end ?? 0, true)}
                         >
                             <Icon name="copy"></Icon>
@@ -285,7 +282,7 @@
                         </p>
                         <button
                             class="cursor-pointer"
-                            on:click={() =>
+                            onclick={() =>
                                 copy(
                                     `${last24hConverted?.start ?? 0} AND ${last24hConverted?.end ?? 0}`,
                                     true

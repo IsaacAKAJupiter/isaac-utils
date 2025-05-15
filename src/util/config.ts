@@ -1,5 +1,3 @@
-import { getUserTimeZone } from './date';
-import { configStore } from '../stores/config';
 import {
     BaseDirectory,
     exists,
@@ -7,8 +5,10 @@ import {
     readTextFile,
     writeTextFile,
 } from '@tauri-apps/plugin-fs';
+import equal from 'fast-deep-equal';
+import { configStore } from '../stores/config';
+import { getUserTimeZone } from './date';
 import { extendObject } from './object';
-import isEqual from 'lodash.isequal';
 
 export type ConfigUnixFetchFormat =
     | 'auto'
@@ -23,6 +23,10 @@ export interface Config {
     unix: {
         fetchFormat: ConfigUnixFetchFormat;
         timeZone: string;
+    };
+    uuid: {
+        namespace?: string;
+        version: string;
     };
 }
 
@@ -39,6 +43,10 @@ export function defaultConfig(): Config {
         unix: {
             fetchFormat: 'auto',
             timeZone: getUserTimeZone(),
+        },
+        uuid: {
+            namespace: undefined,
+            version: 'v4',
         },
     };
 }
@@ -77,7 +85,7 @@ export async function getConfig() {
 
     // Validate and update it (and re-save if updated).
     const newConfig = validateAndUpdateConfig(parsed);
-    if (!isEqual(parsed, newConfig)) {
+    if (!equal(parsed, newConfig)) {
         await writeConfig(newConfig);
     }
 

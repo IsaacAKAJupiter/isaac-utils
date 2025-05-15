@@ -15,8 +15,8 @@
         unix: number;
         formatted: string;
         fetchedIn: string;
-    } | null = null;
-    let displayDiv: HTMLDivElement;
+    } | null = $state(null);
+    let displayDiv: HTMLDivElement = $state();
 
     async function updateWindowProperties() {
         // Wait for svelte to update UI.

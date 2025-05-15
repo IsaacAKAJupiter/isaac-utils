@@ -1,7 +1,7 @@
-import type { ComponentType } from 'svelte';
+import type { Component } from 'svelte';
 
 export interface Tab {
     label: string;
     value: number;
-    component: ComponentType;
+    component: Component;
 }

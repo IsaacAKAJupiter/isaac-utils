@@ -4,8 +4,13 @@
     import Icon from '../icon.svelte';
     import { createEventDispatcher } from 'svelte';
 
-    export let type: AlertType;
-    export let dismissible: boolean;
+    interface Props {
+        type: AlertType;
+        dismissible: boolean;
+        children?: import('svelte').Snippet;
+    }
+
+    let { type, dismissible, children }: Props = $props();
 
     let typeClasses: { [key in AlertType]: string } = {
         info: 'bg-blue-400 text-white',
@@ -25,13 +30,13 @@
 >
     <!-- Text. -->
     <div class="flex-1">
-        <slot />
+        {@render children?.()}
     </div>
 
     {#if dismissible}
         <button
             class="bg-transparent border-none p-0 m-0 text-base"
-            on:click={() => dispath('dismiss')}
+            onclick={() => dispath('dismiss')}
         >
             <Icon name="x"></Icon>
         </button>

@@ -1,15 +1,19 @@
 <script lang="ts">
     import Icon from './icon.svelte';
-    import { createEventDispatcher } from 'svelte';
 
     const icons: { text: string; page: string; icon: any }[] = [
         {
             text: 'Unix',
             page: 'unix',
-            icon: '123',
+            icon: '',
+        },
+        {
+            text: 'UUID',
+            page: 'uuid',
+            icon: '',
         },
     ];
-    const dispatch = createEventDispatcher();
+    let { page }: { page: (p: string) => void } = $props();
 </script>
 
 <!-- Fake sidenav to push contents beside. -->
@@ -29,12 +33,14 @@
     {#each icons as icon}
         <button
             class="border-b border-white border-opacity-50 px-2 pb-2 flex flex-col items-center justify-center w-full"
-            on:click={() => dispatch('page', icon.page)}
+            onclick={() => page(icon.page)}
         >
-            <Icon
-                name={icon.icon}
-                class="text-4xl rounded-full border border-white mb-1"
-            />
+            {#if icon.icon}
+                <Icon
+                    name={icon.icon}
+                    class="text-4xl rounded-full border border-white mb-1"
+                />
+            {/if}
             <p class="text-sm">{icon.text}</p>
         </button>
     {/each}

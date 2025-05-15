@@ -13,10 +13,9 @@ use std::io::Write;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tauri::Listener;
 use tauri::{
-    include_image,
+    AppHandle, Emitter, Manager, include_image,
     menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    AppHandle, Emitter, Manager,
 };
 use tauri_plugin_global_shortcut::Shortcut;
 use tokio::net::{TcpListener, TcpStream};
@@ -46,21 +45,24 @@ async fn accept_connection(peer: SocketAddr, stream: TcpStream, app: &AppHandle)
 }
 
 async fn handle_connection(peer: SocketAddr, stream: TcpStream, app: &AppHandle) -> Result<()> {
-    let ws_stream = accept_async(stream).await.expect("Failed to accept");
+    let ws_stream: tokio_tungstenite::WebSocketStream<TcpStream> =
+        accept_async(stream).await.expect("Failed to accept");
     println!("New WebSocket connection: {}", peer);
     let (mut ws_sender, mut ws_receiver) = ws_stream.split();
-    let mut interval = tokio::time::interval(std::time::Duration::from_millis(1000));
+    let mut interval: tokio::time::Interval =
+        tokio::time::interval(std::time::Duration::from_millis(1000));
 
     // State variables.
-    let available_states = ["file", "text"];
-    let mut state = "".to_string();
+    let available_states: [&'static str; 2] = ["file", "text"];
+    let mut state: String = "".to_string();
 
     // File variables.
-    let mut original_file_name = "".to_string();
-    let mut file_size = -1 as i64;
-    let mut file_processed = 0 as usize;
-    let mut file_save_path = "C:\\Users\\Owner\\Downloads\\testingfiletauri.zip".to_string();
-    let mut file_ready_for_data = true;
+    let mut original_file_name: String = "".to_string();
+    let mut file_size: i64 = -1;
+    let mut file_processed: usize = 0;
+    let mut file_save_path: String =
+        "C:\\Users\\Owner\\Downloads\\testingfiletauri.zip".to_string();
+    let mut file_ready_for_data: bool = true;
 
     loop {
         tokio::select! {
@@ -153,13 +155,14 @@ async fn handle_connection(peer: SocketAddr, stream: TcpStream, app: &AppHandle)
                             println!("datalen: {}, processed: {}, total: {}", data_len, file_processed, file_size);
 
                             // Write the data.
-                            if let Ok(mut file) = OpenOptions::new()
+                            let file = OpenOptions::new()
                                 .create(true)
                                 .append(true)
-                                .open(&file_save_path) {
-                                    let mut file = std::io::BufWriter::new(file);
-                                    let result = file.write_all(&data);
-                                    file.flush()?;
+                                .open(&file_save_path);
+                            if file.is_ok() {
+                                let mut buf = std::io::BufWriter::new(file.unwrap());
+                                    let result = buf.write_all(&data);
+                                    buf.flush()?;
 
                                     if let Some(window) = app.get_webview_window("main") {
                                         let _ = window.emit("e_p2p", json!({
@@ -173,6 +176,22 @@ async fn handle_connection(peer: SocketAddr, stream: TcpStream, app: &AppHandle)
                                     }
                                 }
 
+                            continue;
+                        }
+
+                         // If file state, look for done.
+                         if state == "file" && msg.is_text() && file_size != -1 {
+                            if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.emit("e_p2p", json!({
+                                "event": "file_done",
+                                "data": {}
+                            }));}
+
+                            state = "".to_string();
+                            original_file_name = "".to_string();
+                            file_size = -1;
+                            file_processed = 0;
+                            file_ready_for_data=true;
                             continue;
                         }
 
@@ -347,7 +366,7 @@ pub fn run() {
             c_unix_to_readable,
             c_copy,
             c_valid_shortcut,
-            c_check_ports
+            c_check_ports,
         ])
         .setup(|app| {
             let _ = make_tray(&app);

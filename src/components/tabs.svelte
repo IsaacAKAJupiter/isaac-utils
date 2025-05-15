@@ -1,8 +1,12 @@
 <script lang="ts">
     import type { Tab } from '../types/tabs';
 
-    export let items: Tab[] = [];
-    export let activeTabValue = 1;
+    interface Props {
+        items?: Tab[];
+        activeTabValue?: number;
+    }
+
+    let { items = [], activeTabValue = $bindable(1) }: Props = $props();
 </script>
 
 <ul class="flex flex-wrap pl-0 mb-0 list-none">
@@ -13,7 +17,7 @@
                 item.value
                     ? 'text-black bg-white border-white'
                     : ''}"
-                on:click={() => (activeTabValue = item.value)}
+                onclick={() => (activeTabValue = item.value)}
             >
                 {item.label}
             </button>
@@ -24,7 +28,7 @@
 {#each items as item}
     {#if activeTabValue == item.value}
         <div class="border-t border-white">
-            <svelte:component this={item.component} />
+            <item.component />
         </div>
     {/if}
 {/each}
