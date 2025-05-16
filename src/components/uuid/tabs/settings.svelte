@@ -67,7 +67,11 @@
                 This is the default namespace used for v3/v5 UUID generation.
             </p>
             <div class="flex space-x-2 items-center">
-                <input class="input" type="text" bind:value={namespace} />
+                <input
+                    class="input max-w-80"
+                    type="text"
+                    bind:value={namespace}
+                />
                 <button class="main-btn" onclick={saveNamespace}>Update</button>
             </div>
         </div>

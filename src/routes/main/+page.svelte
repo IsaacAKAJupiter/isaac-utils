@@ -10,8 +10,9 @@
     } from '@tauri-apps/plugin-global-shortcut';
     import { onDestroy, onMount } from 'svelte';
     import type { Unsubscriber } from 'svelte/store';
-    import { fade } from 'svelte/transition';
     import Alerts from '../../components/alerts/alerts.svelte';
+    import P2PBase from '../../components/p2p/base.svelte';
+    import SettingsBase from '../../components/settings/base.svelte';
     import Sidenav from '../../components/sidenav.svelte';
     import UnixBase from '../../components/unix/base.svelte';
     import UUIDBase from '../../components/uuid/base.svelte';
@@ -24,6 +25,7 @@
     let onResizeUnlisten: UnlistenFn;
     let updateCheckUnlisten: UnlistenFn;
     let configShortcutChangeUnsubscriber: Unsubscriber;
+    let p2pBase: P2PBase;
 
     function onUnixToReadableShortcut(event: ShortcutEvent) {
         if (!$configStore) return;
@@ -55,17 +57,6 @@
         await getConfig();
         await registerShortcuts();
 
-        // TODO: Now that ports can be checked, we should work on the impl for the actual listener/server stuff (probably toggle enable in that tab).
-
-        // Results is an array of arrays (ip, success). Filter if success is true and map to IP.
-        // const results =
-        //     (
-        //         await invoke<{ results: [string, boolean][] | null }>(
-        //             'c_check_ports'
-        //         )
-        //     ).results ?? [];
-        // console.log(results.filter((r) => r[1]).map((r) => r[0]));
-
         // Listen for shortcut changes.
         configShortcutChangeUnsubscriber =
             configShortcutLastChange.subscribe(reregisterShortcuts);
@@ -82,6 +73,11 @@
         updateCheckUnlisten = await listen('e_check_for_update', () => {
             checkForAppUpdates(true);
         });
+
+        // Listen for p2p event.
+        updateCheckUnlisten = await listen('e_p2p', (event) => {
+            console.log(event);
+        });
     });
 
     onDestroy(() => {
@@ -97,13 +93,22 @@
     <Sidenav page={(p) => (page = p)} />
 
     <main class="flex-1">
-        {#if page == 'unix'}
-            <div in:fade out:fade>
+        {#if page == 'settings'}
+            <div>
+                <SettingsBase />
+            </div>
+        {:else if page == 'unix'}
+            <!--  in:fade out:fade -->
+            <div>
                 <UnixBase />
             </div>
         {:else if page == 'uuid'}
-            <div in:fade out:fade>
+            <div>
                 <UUIDBase />
+            </div>
+        {:else if page == 'p2p'}
+            <div>
+                <P2PBase bind:this={p2pBase} />
             </div>
         {/if}
     </main>

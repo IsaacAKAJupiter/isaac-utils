@@ -13,9 +13,10 @@ use std::io::Write;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tauri::Listener;
 use tauri::{
-    AppHandle, Emitter, Manager, include_image,
+    include_image,
     menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    AppHandle, Emitter, Manager,
 };
 use tauri_plugin_global_shortcut::Shortcut;
 use tokio::net::{TcpListener, TcpStream};
@@ -59,7 +60,7 @@ async fn handle_connection(peer: SocketAddr, stream: TcpStream, app: &AppHandle)
     // File variables.
     let mut original_file_name: String = "".to_string();
     let mut file_size: i64 = -1;
-    let mut file_processed: usize = 0;
+    let mut file_processed: i64 = 0;
     let mut file_save_path: String =
         "C:\\Users\\Owner\\Downloads\\testingfiletauri.zip".to_string();
     let mut file_ready_for_data: bool = true;
@@ -74,7 +75,17 @@ async fn handle_connection(peer: SocketAddr, stream: TcpStream, app: &AppHandle)
                             break;
                         }
 
+                        if msg.is_ping() || msg.is_pong() {
+                            continue;
+                        }
+
                         let msg_text = if msg.is_text() {msg.to_string()} else {"".to_string()};
+                        
+                        if msg.is_text() {
+                            println!("Got text message: {}", msg_text)
+                        } else {
+                            println!("Got non-text message of {} size", msg.len())
+                        }
 
                         // If no state and not a text message, ignore it.
                         if state == "" && !msg.is_text() {
@@ -136,6 +147,10 @@ async fn handle_connection(peer: SocketAddr, stream: TcpStream, app: &AppHandle)
                                     // If allowed, send the event to the peer that we are good to send.
                                     // ws_sender.send(Message::Text("1".to_owned())).await?;
                                 });
+
+                                // Assume alright for now after 2.5s.
+                                tokio::time::sleep(tokio::time::Duration::from_millis(2500)).await;
+                                let _ = ws_sender.send(Message::Text(Utf8Bytes::from("1"))).await;
                             }
 
                             continue;
@@ -148,10 +163,9 @@ async fn handle_connection(peer: SocketAddr, stream: TcpStream, app: &AppHandle)
                                 continue;
                             }
 
-                            // Write the .
                             let data = msg.into_data();
                             let data_len = data.len();
-                            file_processed += data_len;
+                            file_processed += data_len.try_into().unwrap_or(0);
                             println!("datalen: {}, processed: {}, total: {}", data_len, file_processed, file_size);
 
                             // Write the data.
@@ -174,24 +188,18 @@ async fn handle_connection(peer: SocketAddr, stream: TcpStream, app: &AppHandle)
                                             }
                                         }));
                                     }
+
+                                    if file_processed >= file_size {
+                                        println!("We are done of the file transfer!");
+                                        state = "".to_string();
+                                        original_file_name = "".to_string();
+                                        file_size = -1;
+                                        file_processed = 0;
+                                        file_ready_for_data=true;
+                                        continue;
+                                    }
                                 }
 
-                            continue;
-                        }
-
-                         // If file state, look for done.
-                         if state == "file" && msg.is_text() && file_size != -1 {
-                            if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.emit("e_p2p", json!({
-                                "event": "file_done",
-                                "data": {}
-                            }));}
-
-                            state = "".to_string();
-                            original_file_name = "".to_string();
-                            file_size = -1;
-                            file_processed = 0;
-                            file_ready_for_data=true;
                             continue;
                         }
 
@@ -208,6 +216,7 @@ async fn handle_connection(peer: SocketAddr, stream: TcpStream, app: &AppHandle)
                                 }));
                             }
 
+                            state = "".to_string();
                             continue;
                         }
                     }
@@ -352,6 +361,7 @@ fn show_main_window(app: &AppHandle) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())

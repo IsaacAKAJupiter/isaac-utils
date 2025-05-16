@@ -1,6 +1,6 @@
 use arboard::Clipboard;
 use std::error::Error;
-use windows::Win32::System::Com::{CLSCTX_ALL, CoCreateInstance, CoInitialize};
+use windows::Win32::System::Com::{CoCreateInstance, CoInitialize, CLSCTX_ALL};
 use windows::Win32::System::DataExchange::GetClipboardSequenceNumber;
 use windows::Win32::UI::Accessibility::{
     CUIAutomation, IUIAutomation, IUIAutomationTextPattern, UIA_TextPatternId,

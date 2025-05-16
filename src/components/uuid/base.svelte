@@ -1,6 +1,6 @@
 <script lang="ts">
     import Tabs from '../tabs.svelte';
-    import Convert from './tabs/convert.svelte';
+    import Generate from './tabs/generate.svelte';
     import Settings from './tabs/settings.svelte';
 </script>
 
@@ -11,9 +11,9 @@
         <Tabs
             items={[
                 {
-                    label: 'Convert',
+                    label: 'Generate',
                     value: 1,
-                    component: Convert,
+                    component: Generate,
                 },
                 {
                     label: 'Settings',
