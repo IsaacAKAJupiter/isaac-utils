@@ -20,12 +20,13 @@
     import { isMinimized } from '../../stores/main-window';
     import { getConfig } from '../../util/config';
     import { checkForAppUpdates } from '../../util/tauri';
+    import { handleP2PReceiveMessage } from '../../util/ws';
 
     let page = $state<string>('unix');
     let onResizeUnlisten: UnlistenFn;
     let updateCheckUnlisten: UnlistenFn;
+    let p2pUnlisten: UnlistenFn;
     let configShortcutChangeUnsubscriber: Unsubscriber;
-    let p2pBase: P2PBase;
 
     function onUnixToReadableShortcut(event: ShortcutEvent) {
         if (!$configStore) return;
@@ -75,14 +76,18 @@
         });
 
         // Listen for p2p event.
-        updateCheckUnlisten = await listen('e_p2p', (event) => {
-            console.log(event);
-        });
+        p2pUnlisten = await listen<{ event: string; data: any }>(
+            'e_p2p',
+            (event) => {
+                handleP2PReceiveMessage(event.payload);
+            }
+        );
     });
 
     onDestroy(() => {
         onResizeUnlisten?.();
         updateCheckUnlisten?.();
+        p2pUnlisten?.();
         configShortcutChangeUnsubscriber?.();
     });
 </script>
@@ -108,7 +113,7 @@
             </div>
         {:else if page == 'p2p'}
             <div>
-                <P2PBase bind:this={p2pBase} />
+                <P2PBase />
             </div>
         {/if}
     </main>

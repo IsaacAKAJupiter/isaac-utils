@@ -27,6 +27,7 @@ futures = "0.3"
 arboard = "3.4.0"
 tokio-tungstenite = "*"
 tauri-plugin-notification = "2"
+tauri-plugin-opener = "2"
 
 [features]
 # This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!

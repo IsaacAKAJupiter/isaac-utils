@@ -1,6 +1,6 @@
 import asyncio
 import websockets
-import json
+import uuid
 
 async def client():
     uri = "ws://127.0.0.1:15446"
@@ -36,7 +36,7 @@ async def client():
                         await websocket.send("file")
                         file_name = file_path.split("\\")[-1]
                         file_size = len(file.read())
-                        await websocket.send(f"{file_name}<|>{file_size}")
+                        await websocket.send(f"{uuid.uuid4()}<|>{file_name}<|>{file_size}")
                         print(f"Sent file info: Name='{file_name}', Size='{file_size}'")
                         file.seek(0)
 
@@ -63,30 +63,14 @@ async def client():
                             break
 
                         if ready:
-                            chunk_size = 1024
+                            chunk_size = 1024 * 40
                             while True:
                                 chunk = file.read(chunk_size)
                                 if not chunk:
                                     break
                                 await websocket.send(chunk)
                                 print(f"Sent {len(chunk)} bytes")
-                            await websocket.send("done")
                             print("File sent successfully.")
-
-                            try:
-                                response_after_file = await asyncio.wait_for(websocket.recv(), timeout=10)
-                                if response_after_file != "tick":
-                                    print(f"Received response after file: {response_after_file}")
-                                else:
-                                    print("Received keepalive tick after sending file.")
-                            except asyncio.TimeoutError:
-                                print("No response received within timeout after sending file.")
-                            except websockets.exceptions.ConnectionClosedOK:
-                                print("Connection closed by server.")
-                                break
-                            except websockets.exceptions.ConnectionClosedError as e:
-                                print(f"Connection closed unexpectedly: {e}")
-                                break
 
                 except FileNotFoundError:
                     print(f"Error: File not found at '{file_path}'")

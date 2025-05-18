@@ -2,8 +2,6 @@
     import Tabs from '../tabs.svelte';
     import Receive from './tabs/receive.svelte';
     import Send from './tabs/send.svelte';
-
-    function a() {}
 </script>
 
 <main>

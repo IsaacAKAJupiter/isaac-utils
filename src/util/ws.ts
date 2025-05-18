@@ -1,0 +1,221 @@
+import { v4 } from 'uuid';
+import { addAlert } from '../stores/alert';
+import {
+    p2pFilesReceiving,
+    p2pFilesSending,
+    p2pTextReceived,
+    p2pTextSent,
+    type P2PFileSend,
+    type P2PFileStatus,
+} from '../stores/p2p';
+import { sendNotification } from './notification';
+
+const WS_PORT = 15446;
+
+export function handleP2PReceiveMessage(payload: { event: string; data: any }) {
+    console.log(payload);
+
+    switch (payload.event) {
+        case 'ask_file':
+            const peerAsk = payload.data.peer.split(':')[0];
+            sendNotification({
+                title: 'New P2P File Request',
+                body: `New file from ${peerAsk}: ${payload.data.file_name}.`,
+            });
+            p2pFilesReceiving.update((v) => [
+                ...v,
+                {
+                    id: payload.data.id,
+                    peer: peerAsk,
+                    status: 'waitingForAcceptOrDecline',
+                    name: payload.data.file_name,
+                    size: payload.data.file_size,
+                    transferred: 0,
+                },
+            ]);
+            break;
+        case 'file_data':
+            p2pFilesReceiving.update((v) =>
+                v.map((f) => {
+                    if (f.id !== payload.data.id) return f;
+
+                    const transferred = payload.data.total_processed;
+                    const isDone = transferred >= f.size;
+                    return {
+                        ...f,
+                        transferred,
+                        status: isDone ? 'finished' : 'sendingData',
+                    };
+                })
+            );
+            break;
+        case 'text_received':
+            const peerText = payload.data.peer.split(':')[0];
+            sendNotification({
+                title: 'New P2P Text',
+                body: `New text from ${peerText}.`,
+            });
+            p2pTextReceived.update((v) => [
+                ...v,
+                {
+                    id: v4(),
+                    peer: peerText,
+                    text: payload.data.text,
+                },
+            ]);
+            break;
+        default:
+            alert(
+                `Invalid payload from backend WS: ${JSON.stringify(payload)}`
+            );
+    }
+}
+
+export async function sendText(ip: string, text: string) {
+    return new Promise<{ success: true } | { success: false; error: any }>(
+        (resolve) => {
+            const ws = new WebSocket(`${ip}:${WS_PORT}`);
+
+            ws.addEventListener('open', () => {
+                ws.send('text');
+                ws.send(text);
+                ws.close();
+                p2pTextSent.update((v) => [
+                    ...v,
+                    {
+                        id: v4(),
+                        peer: ip,
+                        text,
+                    },
+                ]);
+                resolve({ success: true });
+            });
+            ws.addEventListener('error', (e) =>
+                resolve({ success: false, error: e })
+            );
+        }
+    );
+}
+
+export function sendFile(ip: string, file: File) {
+    const ws = new WebSocket(`${ip}:${WS_PORT}`);
+    const id = v4();
+
+    const p2pFile: P2PFileSend = {
+        id,
+        peer: ip,
+        ws,
+        status: 'waitingForAcceptOrDecline',
+        file,
+        transferred: 0,
+    };
+
+    ws.addEventListener('open', (e) => _onOpen(p2pFile, e));
+    ws.addEventListener('message', (e) => _onMessage(p2pFile, e));
+    ws.addEventListener('close', (e) => _onClose(p2pFile, e));
+    ws.addEventListener('error', (e) => _onError(p2pFile, e));
+
+    p2pFilesSending.update((v) => [...v, p2pFile]);
+}
+
+function startPing(ws: WebSocket) {
+    if (ws.readyState != WebSocket.OPEN) return;
+
+    ws.send('ping');
+    setTimeout(() => startPing(ws), 1000);
+}
+
+function updateP2PFileSendStatus(id: string, status: P2PFileStatus) {
+    p2pFilesSending.update((v) =>
+        v.map((f) => {
+            if (f.id !== id) return f;
+
+            return {
+                ...f,
+                status,
+            };
+        })
+    );
+}
+
+function updateP2PFileSendTransferred(id: string, addedAmount: number) {
+    p2pFilesSending.update((v) =>
+        v.map((f) => {
+            if (f.id !== id) return f;
+
+            return {
+                ...f,
+                transferred: f.transferred + addedAmount,
+            };
+        })
+    );
+}
+
+function _onOpen(p2pFile: P2PFileSend, _event: Event) {
+    startPing(p2pFile.ws);
+    p2pFile.ws.send(
+        `${p2pFile.id}<|>${p2pFile.file.name}<|>${p2pFile.file.size}`
+    );
+}
+
+function _onMessage(p2pFile: P2PFileSend, event: MessageEvent) {
+    if (event.data === 'tick') return;
+
+    if (p2pFile.status == 'waitingForAcceptOrDecline') {
+        switch (event.data) {
+            case '0':
+                updateP2PFileSendStatus(p2pFile.id, 'declined');
+                p2pFile.ws.close();
+                break;
+            case '1':
+                _sendFileStart(p2pFile);
+                break;
+            default:
+                break;
+        }
+    }
+}
+
+function _onClose(p2pFile: P2PFileSend, _event: Event) {
+    if (['error', 'declined'].includes(p2pFile.status)) {
+        return;
+    }
+
+    updateP2PFileSendStatus(p2pFile.id, 'closed');
+}
+
+function _onError(p2pFile: P2PFileSend, e: any) {
+    addAlert({
+        type: 'error',
+        message: `WebSocket error: ${e.toString()}`,
+        timeout: 10000,
+        dismissible: true,
+    });
+    p2pFile.ws.close();
+    updateP2PFileSendStatus(p2pFile.id, 'error');
+}
+
+function _sendFileStart(p2pFile: P2PFileSend) {
+    const stream = p2pFile.file.stream();
+    stream
+        .pipeTo(
+            new WritableStream({
+                write: (chunk) => {
+                    p2pFile.ws.send(chunk);
+                    updateP2PFileSendTransferred(p2pFile.id, chunk.length);
+                },
+                abort: (err) => {
+                    _onError(p2pFile, err);
+                },
+            })
+        )
+        .catch((err) => _onError(p2pFile, err))
+        .then(() => {
+            addAlert({
+                type: 'success',
+                message: `File "${p2pFile.file.name}" has been sent!`,
+                timeout: 5000,
+                dismissible: true,
+            });
+        });
+}
