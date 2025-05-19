@@ -1,7 +1,9 @@
 <script lang="ts">
     import { addAlert } from '../../../stores/alert';
     import { p2pFilesSending, p2pTextSent } from '../../../stores/p2p';
+    import { formatBytes } from '../../../util/format';
     import { sendFile, sendText } from '../../../util/ws';
+    import Progress from '../../progress.svelte';
 
     let file = $state<FileList>();
     let filePeer = $state<string>('');
@@ -76,7 +78,7 @@
 
         addAlert({
             type: 'error',
-            message: `Failed sending text with error: ${result.error}.`,
+            message: `Failed sending text.`,
             timeout: 10000,
             dismissible: true,
         });
@@ -111,19 +113,42 @@
                     <tr>
                         <th>Name</th>
                         <th>Peer</th>
-                        <th>Size</th>
-                        <th>Sent</th>
-                        <th>Percent</th>
+                        <th>Progress</th>
                     </tr>
                 </thead>
                 <tbody>
                     {#each $p2pFilesSending as file}
                         <tr>
-                            <td>{file.file.name}</td>
-                            <td>{file.peer}</td>
-                            <td>{file.file.size}</td>
-                            <td>{file.transferred}</td>
-                            <td>{(file.transferred / file.file.size) * 100}</td>
+                            <td class="text-center">{file.file.name}</td>
+                            <td class="text-center">{file.peer}</td>
+                            <td class="text-center">
+                                {#if file.status == 'error'}
+                                    <p class="text-red-600">Error!</p>
+                                {:else if file.status == 'declined'}
+                                    <p class="text-orange-600">Declined!</p>
+                                {:else if file.status == 'closed'}
+                                    <p class="text-red-600">Closed!</p>
+                                {:else if file.status == 'waitingForAcceptOrDecline'}
+                                    <p class="text-red-600">Waiting...</p>
+                                {:else if file.status == 'sendingData' || file.status == 'finished'}
+                                    <div
+                                        class="{file.status == 'sendingData'
+                                            ? 'text-primary'
+                                            : 'text-green-600'} h-4"
+                                    >
+                                        <Progress
+                                            progress={(file.transferred /
+                                                file.file.size) *
+                                                100}
+                                            height="100%"
+                                        />
+                                        <p class="text-center text-xs">
+                                            {formatBytes(file.transferred)} /
+                                            {formatBytes(file.file.size)}
+                                        </p>
+                                    </div>
+                                {/if}
+                            </td>
                         </tr>
                     {/each}
                 </tbody>

@@ -9,30 +9,9 @@
         p2pTextReceived,
         type P2PFileReceive,
     } from '../../../stores/p2p';
+    import { formatBytes } from '../../../util/format';
     import Icon from '../../icon.svelte';
     import Progress from '../../progress.svelte';
-
-    function formatBytes(bytes: number, decimals: number = 2) {
-        if (!+bytes) return '0 Bytes';
-
-        const k = 1024;
-        const dm = decimals < 0 ? 0 : decimals;
-        const sizes = [
-            'Bytes',
-            'KiB',
-            'MiB',
-            'GiB',
-            'TiB',
-            'PiB',
-            'EiB',
-            'ZiB',
-            'YiB',
-        ];
-
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-        return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
-    }
 
     async function declineFile(file: P2PFileReceive) {
         p2pFilesReceiving.update((v) =>

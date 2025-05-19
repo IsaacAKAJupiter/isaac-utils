@@ -72,14 +72,12 @@ async fn handle_connection(peer: SocketAddr, stream: TcpStream, app: &AppHandle)
 
         if msg.is_ping() {
             let ws_sender_clone = Arc::clone(&ws_sender_arc);
-            tokio::spawn(async move {
-                let mut sender_lock = ws_sender_clone.lock().await;
-                let _ = sender_lock.send(Message::Pong(msg.into_data())).await;
-            });
+            let mut sender_lock = ws_sender_clone.lock().await;
+            let _ = sender_lock.send(Message::Pong(msg.into_data())).await;
             continue;
         }
 
-        let msg_text = if msg.is_text() {msg.to_string()} else {"".to_string()};
+        let msg_text = if msg.is_text() { msg.to_string() } else { "".to_string() };
 
         // If no state and not a text message, ignore it.
         if state == "" && !msg.is_text() {
@@ -172,11 +170,7 @@ async fn handle_connection(peer: SocketAddr, stream: TcpStream, app: &AppHandle)
 
             // Write the data.
             let path_guard = file_save_path_arc.lock().await;
-            let file = OpenOptions::new()
-                .create(true)
-                .append(true)
-                .truncate(is_start)
-                .open(&*path_guard);
+            let file = if is_start { OpenOptions::new().write(true).truncate(true).open(&*path_guard) } else { OpenOptions::new().create(true).append(true).open(&*path_guard) };
             if file.is_ok() {
                 let mut buf = std::io::BufWriter::new(file.unwrap());
                 let result = buf.write_all(&data);
@@ -201,6 +195,8 @@ async fn handle_connection(peer: SocketAddr, stream: TcpStream, app: &AppHandle)
                     file_processed = 0;
                     continue;
                 }
+            } else {
+                println!("{:?}", file.unwrap_err());
             }
 
             continue;

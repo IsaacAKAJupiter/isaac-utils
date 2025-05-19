@@ -13,8 +13,6 @@ import { sendNotification } from './notification';
 const WS_PORT = 15446;
 
 export function handleP2PReceiveMessage(payload: { event: string; data: any }) {
-    console.log(payload);
-
     switch (payload.event) {
         case 'ask_file':
             const peerAsk = payload.data.peer.split(':')[0];
@@ -74,9 +72,14 @@ export function handleP2PReceiveMessage(payload: { event: string; data: any }) {
 export async function sendText(ip: string, text: string) {
     return new Promise<{ success: true } | { success: false; error: any }>(
         (resolve) => {
-            const ws = new WebSocket(`${ip}:${WS_PORT}`);
+            const ws = new WebSocket(`ws://${ip}:${WS_PORT}`);
+
+            const timeout = setTimeout(() => {
+                ws.close();
+            }, 1500);
 
             ws.addEventListener('open', () => {
+                clearTimeout(timeout);
                 ws.send('text');
                 ws.send(text);
                 ws.close();
@@ -98,7 +101,7 @@ export async function sendText(ip: string, text: string) {
 }
 
 export function sendFile(ip: string, file: File) {
-    const ws = new WebSocket(`${ip}:${WS_PORT}`);
+    const ws = new WebSocket(`ws://${ip}:${WS_PORT}`);
     const id = v4();
 
     const p2pFile: P2PFileSend = {
@@ -110,7 +113,12 @@ export function sendFile(ip: string, file: File) {
         transferred: 0,
     };
 
-    ws.addEventListener('open', (e) => _onOpen(p2pFile, e));
+    const timeout = setTimeout(() => {
+        updateP2PFileSendStatus(id, 'error');
+        ws.close();
+    }, 1500);
+
+    ws.addEventListener('open', (e) => _onOpen(p2pFile, timeout, e));
     ws.addEventListener('message', (e) => _onMessage(p2pFile, e));
     ws.addEventListener('close', (e) => _onClose(p2pFile, e));
     ws.addEventListener('error', (e) => _onError(p2pFile, e));
@@ -151,8 +159,10 @@ function updateP2PFileSendTransferred(id: string, addedAmount: number) {
     );
 }
 
-function _onOpen(p2pFile: P2PFileSend, _event: Event) {
+function _onOpen(p2pFile: P2PFileSend, timeout: number, _event: Event) {
+    clearTimeout(timeout);
     startPing(p2pFile.ws);
+    p2pFile.ws.send('file');
     p2pFile.ws.send(
         `${p2pFile.id}<|>${p2pFile.file.name}<|>${p2pFile.file.size}`
     );
@@ -177,25 +187,21 @@ function _onMessage(p2pFile: P2PFileSend, event: MessageEvent) {
 }
 
 function _onClose(p2pFile: P2PFileSend, _event: Event) {
-    if (['error', 'declined'].includes(p2pFile.status)) {
+    if (['error', 'declined', 'finished'].includes(p2pFile.status)) {
         return;
     }
 
     updateP2PFileSendStatus(p2pFile.id, 'closed');
 }
 
-function _onError(p2pFile: P2PFileSend, e: any) {
-    addAlert({
-        type: 'error',
-        message: `WebSocket error: ${e.toString()}`,
-        timeout: 10000,
-        dismissible: true,
-    });
+function _onError(p2pFile: P2PFileSend, _event: any) {
     p2pFile.ws.close();
     updateP2PFileSendStatus(p2pFile.id, 'error');
 }
 
 function _sendFileStart(p2pFile: P2PFileSend) {
+    updateP2PFileSendStatus(p2pFile.id, 'sendingData');
+
     const stream = p2pFile.file.stream();
     stream
         .pipeTo(
@@ -211,6 +217,8 @@ function _sendFileStart(p2pFile: P2PFileSend) {
         )
         .catch((err) => _onError(p2pFile, err))
         .then(() => {
+            updateP2PFileSendStatus(p2pFile.id, 'finished');
+            p2pFile.ws.close();
             addAlert({
                 type: 'success',
                 message: `File "${p2pFile.file.name}" has been sent!`,
