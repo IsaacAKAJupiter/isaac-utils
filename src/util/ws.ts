@@ -195,8 +195,8 @@ function _onClose(p2pFile: P2PFileSend, _event: Event) {
 }
 
 function _onError(p2pFile: P2PFileSend, _event: any) {
-    p2pFile.ws.close();
     updateP2PFileSendStatus(p2pFile.id, 'error');
+    p2pFile.ws.close();
 }
 
 function _sendFileStart(p2pFile: P2PFileSend) {
