@@ -1,5 +1,4 @@
 import { v4 } from 'uuid';
-import { addAlert } from '../stores/alert';
 import {
     p2pFilesReceiving,
     p2pFilesSending,
@@ -218,12 +217,5 @@ function _sendFileStart(p2pFile: P2PFileSend) {
         .catch((err) => _onError(p2pFile, err))
         .then(() => {
             updateP2PFileSendStatus(p2pFile.id, 'finished');
-            p2pFile.ws.close();
-            addAlert({
-                type: 'success',
-                message: `File "${p2pFile.file.name}" has been sent!`,
-                timeout: 5000,
-                dismissible: true,
-            });
         });
 }

@@ -71,12 +71,11 @@ async fn handle_connection(peer: SocketAddr, stream: TcpStream, app: &AppHandle)
         }
 
         if msg.is_ping() {
-            let ws_sender_clone = Arc::clone(&ws_sender_arc);
-            let mut sender_lock = ws_sender_clone.lock().await;
+            let mut sender_lock = &ws_sender_arc.lock().await;
             let _ = sender_lock.send(Message::Pong(msg.into_data())).await;
             continue;
         }
-        
+
         let msg_text = if msg.is_text() { msg.to_string() } else { "".to_string() };
 
         // If no state and not a text message, ignore it.
@@ -193,6 +192,8 @@ async fn handle_connection(peer: SocketAddr, stream: TcpStream, app: &AppHandle)
                     state = "".to_string();
                     file_size = -1;
                     file_processed = 0;
+                    let mut sender_lock = &ws_sender_arc.lock().await;
+                    sender_lock.close();
                     continue;
                 }
             } else {
