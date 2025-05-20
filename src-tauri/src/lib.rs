@@ -71,7 +71,7 @@ async fn handle_connection(peer: SocketAddr, stream: TcpStream, app: &AppHandle)
         }
 
         if msg.is_ping() {
-            let mut sender_lock = &ws_sender_arc.lock().await;
+            let mut sender_lock = ws_sender_arc.lock().await;
             let _ = sender_lock.send(Message::Pong(msg.into_data())).await;
             continue;
         }
@@ -192,8 +192,8 @@ async fn handle_connection(peer: SocketAddr, stream: TcpStream, app: &AppHandle)
                     state = "".to_string();
                     file_size = -1;
                     file_processed = 0;
-                    let mut sender_lock = &ws_sender_arc.lock().await;
-                    sender_lock.close();
+                    let mut sender_lock = ws_sender_arc.lock().await;
+                    let _ = sender_lock.close().await;
                     continue;
                 }
             } else {
