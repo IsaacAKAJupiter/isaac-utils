@@ -5,10 +5,14 @@ mod get_selection;
 mod ws;
 
 use arboard::Clipboard;
+use dns_lookup::lookup_addr;
 use futures::future::join_all;
 use ipnet::Ipv4Net;
 use serde_json::json;
-use std::{net::{IpAddr, Ipv4Addr, SocketAddr}, str::FromStr};
+use std::{
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+    str::FromStr,
+};
 use tauri::{
     include_image,
     menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem},
@@ -18,7 +22,6 @@ use tauri::{
 use tauri_plugin_global_shortcut::Shortcut;
 use tokio::net::TcpStream;
 use tokio_tungstenite::tungstenite::Result;
-use dns_lookup::lookup_addr;
 
 async fn scan_port(target: Ipv4Addr, port: u16, timeout: u64) -> (Ipv4Addr, bool) {
     let timeout = tokio::time::Duration::from_secs(timeout);
@@ -79,7 +82,7 @@ async fn c_check_ports() -> serde_json::Value {
 
         match Ipv4Net::new(interface.ipv4[0].addr, interface.ipv4[0].prefix_len) {
             Ok(nw) => {
-                let results = join_all(nw.hosts().map(|host| scan_port(host, 8888, 1))).await;
+                let results = join_all(nw.hosts().map(|host| scan_port(host, 15446, 1))).await;
                 let filtered: Vec<_> = results
                     .into_iter()
                     .filter(|host| host.1)
@@ -101,8 +104,8 @@ async fn c_get_hostname(ip: String) -> String {
     if let Ok(ipv4) = Ipv4Addr::from_str(ip.as_str()) {
         return match lookup_addr(&IpAddr::V4(ipv4)) {
             Ok(hostname) => hostname,
-            Err(_) => "".to_string()
-        }
+            Err(_) => "".to_string(),
+        };
     }
 
     "".to_string()
