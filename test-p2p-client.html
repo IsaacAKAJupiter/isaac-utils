@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Test P2P Client</title>
+
+        <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    </head>
+    <body class="bg-gray-700 text-white p-4">
+        <div class="mb-4">
+            <p class="mb-2 font-bold text-xl">Send File</p>
+            <div>
+                <input
+                    id="file"
+                    type="file"
+                    class="appearance-none px-1 py-[0.1rem] bg-white text-black text-sm sm:text-base w-full border rounded border-gray-400 focus:border-primary focus:outline-none disabled:bg-gray-200 disabled:text-[#8f8f8f] disabled:cursor-not-allowed disabled:select-none"
+                />
+            </div>
+            <div class="mt-4 flex space-x-2 items-center">
+                <button
+                    id="sendFile"
+                    class="bg-orange-600 rounded border border-black p-2 disabled:bg-gray-400"
+                >
+                    Send File
+                </button>
+
+                <p
+                    id="sending"
+                    class="hidden"
+                    data-processed="0"
+                    data-total="0"
+                >
+                    Sending: 0%
+                </p>
+            </div>
+        </div>
+
+        <hr />
+
+        <div class="mb-4">
+            <p class="mb-2 font-bold text-xl">Send Text</p>
+            <div>
+                <div class="flex space-x-2 items-center">
+                    <p>Text:</p>
+                    <input
+                        id="text"
+                        type="text"
+                        class="appearance-none px-1 py-[0.1rem] bg-white text-black text-sm sm:text-base w-full border rounded border-gray-400 focus:border-primary focus:outline-none disabled:bg-gray-200 disabled:text-[#8f8f8f] disabled:cursor-not-allowed disabled:select-none"
+                    />
+                </div>
+            </div>
+            <div class="mt-4 flex space-x-2 items-center">
+                <button
+                    id="sendText"
+                    class="bg-orange-600 rounded border border-black p-2"
+                >
+                    Send Text
+                </button>
+            </div>
+        </div>
+
+        <script defer>
+            function startPing(ws) {
+                if (ws.readyState != WebSocket.OPEN) return;
+
+                ws.send('ping');
+                setTimeout(() => startPing(ws), 1000);
+            }
+
+            sendText.addEventListener('click', () => {
+                if (!text.value) {
+                    alert('No text given.');
+                    return;
+                }
+
+                const ws = new WebSocket(`ws://127.0.0.1:15446`);
+
+                const timeout = setTimeout(() => {
+                    ws.close();
+                }, 1500);
+
+                ws.addEventListener('open', () => {
+                    clearTimeout(timeout);
+                    ws.send('text');
+                    ws.send(text.value);
+                    ws.close();
+                    alert('Success!');
+                });
+                ws.addEventListener('error', (e) => {
+                    console.error(e);
+                    alert('Error sending, check console.');
+                });
+            });
+
+            sendFile.addEventListener('click', () => {
+                if (!file.files || file.files.length != 1) {
+                    alert('Must have a file selected.');
+                    return;
+                }
+
+                const ws = new WebSocket(`ws://127.0.0.1:15446`);
+                const id = crypto.randomUUID();
+                const realFile = file.files[0];
+
+                sending.classList.remove('hidden');
+                sending.dataset.total = `${realFile.size}`;
+                sending.dataset.processed = '0';
+
+                const timeout = setTimeout(() => {
+                    ws.close();
+                }, 1500);
+
+                ws.addEventListener('open', (e) => {
+                    clearTimeout(timeout);
+                    startPing(ws);
+                    ws.send('file');
+                    ws.send(`${id}<|>${realFile.name}<|>${realFile.size}`);
+                });
+                ws.addEventListener('message', (e) => {
+                    if (typeof e.data === 'string') {
+                        if (['ping', 'pong', 'tick'].includes(e.data)) {
+                            return;
+                        }
+
+                        if (e.data === '0') {
+                            ws.close();
+                            return;
+                        }
+
+                        if (e.data === '1') {
+                            const stream = realFile.stream();
+                            stream
+                                .pipeTo(
+                                    new WritableStream({
+                                        write: (chunk) => {
+                                            ws.send(chunk);
+                                        },
+                                        abort: (err) => {
+                                            console.error(err);
+                                            alert('Error sending data.');
+                                        },
+                                    })
+                                )
+                                .catch((err) => {
+                                    console.error(err);
+                                    alert('Error sending data.');
+                                })
+                                .then(() => {
+                                    console.log('Done sending from pipe.');
+                                });
+                            return;
+                        }
+
+                        if (e.data.startsWith('__processed')) {
+                            const [
+                                _,
+                                fileID,
+                                dataLen,
+                                fileProcessed,
+                                successfulWrite,
+                            ] = e.data.split('<|>');
+                            sending.dataset.processed = `${+fileProcessed}`;
+                            const percent =
+                                (+sending.dataset.processed /
+                                    +sending.dataset.total) *
+                                100;
+                            sending.innerText = `Sending: ${percent}%`;
+                            return;
+                        }
+
+                        console.log(`Unknown: ${e.data}`);
+                        return;
+                    } else {
+                        console.log(e.data);
+                    }
+                });
+                ws.addEventListener('close', (e) => {});
+                ws.addEventListener('error', (e) => {
+                    console.error(e);
+                    alert('Error.');
+                });
+            });
+        </script>
+    </body>
+</html>

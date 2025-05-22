@@ -1,6 +1,7 @@
 <script lang="ts">
     import Tabs from '../tabs.svelte';
     import Receive from './tabs/receive.svelte';
+    import Scan from './tabs/scan.svelte';
     import Send from './tabs/send.svelte';
 </script>
 
@@ -13,6 +14,7 @@
 
     <div class="px-4">
         <Tabs
+            ulClasses="ml-[2.6rem]"
             items={[
                 {
                     label: 'Send',
@@ -23,6 +25,11 @@
                     label: 'Receive',
                     value: 2,
                     component: Receive,
+                },
+                {
+                    label: 'Scan',
+                    value: 3,
+                    component: Scan,
                 },
             ]}
         />

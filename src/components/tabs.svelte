@@ -1,25 +1,42 @@
 <script lang="ts">
     import type { Tab } from '../types/tabs';
 
-    interface Props {
+    let {
+        items = [],
+        activeTabValue = $bindable(1),
+        orientation = 'horizontal',
+        ulClasses = '',
+    }: {
         items?: Tab[];
         activeTabValue?: number;
-    }
-
-    let { items = [], activeTabValue = $bindable(1) }: Props = $props();
+        orientation?: 'vertical' | 'horizontal';
+        ulClasses?: string;
+    } = $props();
 </script>
 
-<ul class="flex flex-wrap pl-0 mb-0 list-none">
+<ul
+    class="{orientation == 'horizontal'
+        ? 'flex flex-wrap pl-0 mb-0'
+        : ''} list-none {ulClasses}"
+>
     {#each items as item}
-        <li>
+        <li class={item.liClasses}>
             <button
-                class="border border-transparent rounded-t block py-2 px-4 cursor-pointer hover:border-white {activeTabValue ===
+                class="border border-transparent block cursor-pointer hover:border-white {activeTabValue ===
                 item.value
                     ? 'text-black bg-white border-white'
-                    : ''}"
+                    : ''} {orientation == 'horizontal'
+                    ? 'rounded-t py-2 px-4'
+                    : 'rounded-l py-4 px-2'} {item.buttonClasses}"
                 onclick={() => (activeTabValue = item.value)}
             >
-                {item.label}
+                {#if orientation == 'horizontal'}
+                    {item.label}
+                {:else}
+                    <span class="[writing-mode:_sideways-lr]">
+                        {item.label}
+                    </span>
+                {/if}
             </button>
         </li>
     {/each}
@@ -27,8 +44,10 @@
 
 {#each items as item}
     {#if activeTabValue == item.value}
-        <div class="border-t border-white">
-            <item.component />
+        <div class={orientation == 'horizontal' ? 'border-t border-white' : ''}>
+            {#if item.component}
+                <item.component />
+            {/if}
         </div>
     {/if}
 {/each}

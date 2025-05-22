@@ -1,3 +1,4 @@
+import { get } from 'svelte/store';
 import { v4 } from 'uuid';
 import {
     p2pFilesReceiving,
@@ -170,23 +171,42 @@ function _onOpen(p2pFile: P2PFileSend, timeout: number, _event: Event) {
 function _onMessage(p2pFile: P2PFileSend, event: MessageEvent) {
     if (event.data === 'tick') return;
 
-    if (p2pFile.status == 'waitingForAcceptOrDecline') {
+    const currentFile = get(p2pFilesSending).find((f) => f.id == p2pFile.id);
+    if (!currentFile) return;
+
+    if (currentFile.status == 'waitingForAcceptOrDecline') {
         switch (event.data) {
             case '0':
-                updateP2PFileSendStatus(p2pFile.id, 'declined');
-                p2pFile.ws.close();
+                updateP2PFileSendStatus(currentFile.id, 'declined');
+                currentFile.ws.close();
                 break;
             case '1':
-                _sendFileStart(p2pFile);
+                _sendFileStart(currentFile);
                 break;
             default:
                 break;
         }
+        return;
+    }
+
+    if (currentFile.status == 'sendingData') {
+        if (
+            typeof event.data === 'string' &&
+            event.data.startsWith('__processed')
+        ) {
+            const [_, fileID, _dataLen, fileProcessed, _successfulWrite] =
+                event.data.split('<|>');
+            updateP2PFileSendTransferred(fileID, +fileProcessed);
+            return;
+        }
+
+        return;
     }
 }
 
 function _onClose(p2pFile: P2PFileSend, _event: Event) {
-    if (['error', 'declined', 'finished'].includes(p2pFile.status)) {
+    const currentFile = get(p2pFilesSending).find((f) => f.id == p2pFile.id);
+    if (['error', 'declined', 'finished'].includes(currentFile?.status ?? '')) {
         return;
     }
 
@@ -207,7 +227,10 @@ function _sendFileStart(p2pFile: P2PFileSend) {
             new WritableStream({
                 write: (chunk) => {
                     p2pFile.ws.send(chunk);
-                    updateP2PFileSendTransferred(p2pFile.id, chunk.length);
+                    // TODO: Contacts.
+                    // TODO: Implement the port scan.
+                    // TODO: Fix the UI a bit?
+                    // TODO: History?
                 },
                 abort: (err) => {
                     _onError(p2pFile, err);

@@ -40,7 +40,7 @@
                 "height": 600,
                 "center": true,
                 "focus": false,
-                "visible": false,
+                "visible": true,
                 "label": "main",
                 "title": "Isaac Utils"
             },
