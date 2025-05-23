@@ -10,8 +10,7 @@ use futures::future::join_all;
 use ipnet::Ipv4Net;
 use serde_json::json;
 use std::{
-    net::{IpAddr, Ipv4Addr, SocketAddr},
-    str::FromStr,
+    collections::HashMap, net::{IpAddr, Ipv4Addr, SocketAddr}, str::FromStr
 };
 use tauri::{
     include_image,
@@ -73,26 +72,39 @@ fn c_valid_shortcut(shortcut: String) -> bool {
 
 #[tauri::command]
 async fn c_check_ports() -> serde_json::Value {
-    for interface in netdev::get_interfaces() {
-        println!("Default Interface:");
-        println!("\tIPv4: {:?}", interface.ipv4);
-        println!("\tIP: {:?}", interface.ipv4[0].addr);
-        println!("\tSubnet Mask: {:?}", interface.ipv4[0].netmask);
-        println!("\tPrefix Len: {:?}", interface.ipv4[0].prefix_len);
+    match netdev::get_default_interface() {
+        Ok(interface) => {
+            if interface.ipv4.is_empty() {
+                return json!({"results": null});
+            }
 
-        match Ipv4Net::new(interface.ipv4[0].addr, interface.ipv4[0].prefix_len) {
-            Ok(nw) => {
-                let results = join_all(nw.hosts().map(|host| scan_port(host, 15446, 1))).await;
-                let filtered: Vec<_> = results
-                    .into_iter()
-                    .filter(|host| host.1)
-                    .map(|host| json!({ "ip": host.0 }))
-                    .collect();
-                return json!({ "results": filtered });
+            println!("Default Interface:");
+            println!("\tIPv4: {:?}", interface.ipv4);
+            println!("\tIP: {:?}", interface.ipv4[0].addr());
+            println!("\tSubnet Mask: {:?}", interface.ipv4[0].netmask());
+            println!("\tPrefix Len: {:?}", interface.ipv4[0].prefix_len());
+
+            match Ipv4Net::new(interface.ipv4[0].addr(), interface.ipv4[0].prefix_len()) {
+                Ok(nw) => {
+                    let results = join_all(
+                        nw.hosts()
+                            .filter(|host| *host != interface.ipv4[0].addr())
+                            .map(|host| scan_port(host, 15446, 1))
+                    ).await;
+                    let filtered: Vec<_> = results
+                        .into_iter()
+                        .filter(|host| host.1)
+                        .map(|host| json!({ "ip": host.0 }))
+                        .collect();
+                    return json!({ "results": filtered });
+                }
+                Err(e) => {
+                    println!("NW Error: {}", e);
+                }
             }
-            Err(e) => {
-                println!("NW Error: {}", e);
-            }
+        }
+        Err(e) => {
+            println!("Error: {}", e);
         }
     }
 

@@ -17,6 +17,10 @@ export type ConfigUnixFetchFormat =
     | 'microseconds'
     | 'nanoseconds';
 
+export interface ConfigP2PContact {
+    name: string;
+}
+
 export interface Config {
     locale: string;
     shortcuts: { unixToReadable: string };
@@ -27,6 +31,9 @@ export interface Config {
     uuid: {
         namespace?: string;
         version: string;
+    };
+    p2p: {
+        contacts: ConfigP2PContact[];
     };
 }
 
@@ -47,6 +54,9 @@ export function defaultConfig(): Config {
         uuid: {
             namespace: undefined,
             version: 'v4',
+        },
+        p2p: {
+            contacts: [],
         },
     };
 }

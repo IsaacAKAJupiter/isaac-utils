@@ -134,8 +134,9 @@
                         <tbody>
                             {#each $p2pFilesSending as file}
                                 <tr>
-                                    <td class="text-center">{file.file.name}</td
-                                    >
+                                    <td class="text-center">
+                                        {file.file.name}
+                                    </td>
                                     <td class="text-center">{file.peer}</td>
                                     <td class="text-center">
                                         {#if file.status == 'error'}
