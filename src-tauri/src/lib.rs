@@ -10,7 +10,8 @@ use futures::future::join_all;
 use ipnet::Ipv4Net;
 use serde_json::json;
 use std::{
-    collections::HashMap, net::{IpAddr, Ipv4Addr, SocketAddr}, str::FromStr
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+    str::FromStr,
 };
 use tauri::{
     include_image,
@@ -89,8 +90,9 @@ async fn c_check_ports() -> serde_json::Value {
                     let results = join_all(
                         nw.hosts()
                             .filter(|host| *host != interface.ipv4[0].addr())
-                            .map(|host| scan_port(host, 15446, 1))
-                    ).await;
+                            .map(|host| scan_port(host, 15446, 1)),
+                    )
+                    .await;
                     let filtered: Vec<_> = results
                         .into_iter()
                         .filter(|host| host.1)
