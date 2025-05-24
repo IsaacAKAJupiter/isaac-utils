@@ -14,7 +14,7 @@
 
     <div class="px-4">
         <Tabs
-            ulClasses="ml-[2.6rem]"
+            ulClasses="ml-[3.2rem]"
             items={[
                 {
                     label: 'Send',

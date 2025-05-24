@@ -6,11 +6,13 @@
         activeTabValue = $bindable(1),
         orientation = 'horizontal',
         ulClasses = '',
+        spanClasses = '',
     }: {
         items?: Tab[];
         activeTabValue?: number;
         orientation?: 'vertical' | 'horizontal';
         ulClasses?: string;
+        spanClasses?: string;
     } = $props();
 </script>
 
@@ -33,7 +35,7 @@
                 {#if orientation == 'horizontal'}
                     {item.label}
                 {:else}
-                    <span class="[writing-mode:_sideways-lr]">
+                    <span class="block rotate-[270deg] {spanClasses}">
                         {item.label}
                     </span>
                 {/if}

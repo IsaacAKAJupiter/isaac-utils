@@ -34,6 +34,7 @@ export interface Config {
     };
     p2p: {
         contacts: ConfigP2PContact[];
+        scanSize: number;
     };
 }
 
@@ -57,6 +58,7 @@ export function defaultConfig(): Config {
         },
         p2p: {
             contacts: [],
+            scanSize: 100,
         },
     };
 }

@@ -72,7 +72,7 @@ fn c_valid_shortcut(shortcut: String) -> bool {
 }
 
 #[tauri::command]
-async fn c_check_ports() -> serde_json::Value {
+async fn c_check_ports(size: usize, app: AppHandle) -> serde_json::Value {
     match netdev::get_default_interface() {
         Ok(interface) => {
             if interface.ipv4.is_empty() {
@@ -87,18 +87,59 @@ async fn c_check_ports() -> serde_json::Value {
 
             match Ipv4Net::new(interface.ipv4[0].addr(), interface.ipv4[0].prefix_len()) {
                 Ok(nw) => {
-                    let results = join_all(
-                        nw.hosts()
-                            .filter(|host| *host != interface.ipv4[0].addr())
-                            .map(|host| scan_port(host, 15446, 1)),
-                    )
-                    .await;
-                    let filtered: Vec<_> = results
-                        .into_iter()
-                        .filter(|host| host.1)
-                        .map(|host| json!({ "ip": host.0 }))
+                    let hosts: Vec<_> = nw.hosts()
+                        .filter(|host| *host != interface.ipv4[0].addr())
                         .collect();
-                    return json!({ "results": filtered });
+
+                    let entry_count = hosts.len();
+                    if let Some(window) = app.get_webview_window("main") {
+                        let _ = window.emit(
+                            "e_p2p_scan",
+                            json!({
+                                "event": "count",
+                                "data": entry_count,
+                            }),
+                        );
+                    }
+
+                    let chunks = hosts.chunks(size);
+                    let mut results: Vec<serde_json::Value> = Vec::new();
+                    for chunk in chunks {
+                        let futures = chunk.iter().map(|&host| scan_port(host, 15446, 1));
+                        let chunk_results = join_all(futures).await;
+
+                        let mut filtered: Vec<_> = chunk_results
+                            .into_iter()
+                            .filter(|(_ip, success)| *success)
+                            .map(|(ip, _success)| json!({ "ip": ip }))
+                            .collect();
+
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.emit(
+                                "e_p2p_scan",
+                                json!({
+                                    "event": "processed",
+                                    "data": chunk.len(),
+                                }),
+                            );
+                        }
+                        
+                        results.append(&mut filtered);
+                    }
+
+                    // let results = join_all(
+                    //     nw.hosts()
+                    //         .filter(|host| *host != interface.ipv4[0].addr())
+                    //         .chunks(size)
+                    //         .map(|host| scan_port(host, 15446, 1)),
+                    // )
+                    // .await;
+                    // let filtered: Vec<_> = results
+                    //     .into_iter()
+                    //     .filter(|host| host.1)
+                    //     .map(|host| json!({ "ip": host.0 }))
+                    //     .collect();
+                    return json!({ "results": results });
                 }
                 Err(e) => {
                     println!("NW Error: {}", e);

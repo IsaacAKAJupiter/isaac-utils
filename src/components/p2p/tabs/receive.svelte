@@ -84,6 +84,7 @@
         <div class="bg-bg">
             <Tabs
                 orientation="vertical"
+                spanClasses="w-8"
                 items={[
                     {
                         label: 'File',
