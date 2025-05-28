@@ -1,14 +1,15 @@
 <script lang="ts">
     import { listen, type UnlistenFn } from '@tauri-apps/api/event';
-    import { onDestroy, onMount, tick } from 'svelte';
-    import { getFormattedDate } from '../../util/date';
     import {
         cursorPosition,
         getCurrentWindow,
         LogicalSize,
         PhysicalPosition,
     } from '@tauri-apps/api/window';
+    import { onDestroy, onMount, tick } from 'svelte';
+    import Icon from '../../components/icon.svelte';
     import type { Config } from '../../util/config';
+    import { getFormattedDate } from '../../util/date';
 
     let unlisten: UnlistenFn;
     let currentDisplay: {
@@ -16,14 +17,16 @@
         formatted: string;
         fetchedIn: string;
     } | null = $state(null);
-    let displayDiv: HTMLDivElement = $state();
+    let displayDiv = $state<HTMLDivElement>();
 
     async function updateWindowProperties() {
         // Wait for svelte to update UI.
         await tick();
 
         // Get the size of the div.
-        const size = displayDiv.children[0].children[0].getBoundingClientRect();
+        const size =
+            displayDiv?.children[0].children[0].getBoundingClientRect();
+        if (!size) return;
 
         // Get current window and handle.
         const window = getCurrentWindow();
@@ -34,6 +37,11 @@
         await window.setSize(new LogicalSize(size.width, size.height));
         await window.show();
         await window.setFocus();
+    }
+
+    async function hideWindow() {
+        const window = getCurrentWindow();
+        await window.hide();
     }
 
     onMount(async () => {
@@ -52,8 +60,10 @@
             updateWindowProperties();
         });
 
-        (displayDiv.children[0] as HTMLDivElement).style.width =
-            `${screen.width}px`;
+        const innerDiv = displayDiv?.children[0] as HTMLDivElement | undefined;
+        if (innerDiv) {
+            innerDiv.style.width = `${screen.width}px`;
+        }
     });
 
     onDestroy(() => {
@@ -63,15 +73,19 @@
 
 <div bind:this={displayDiv} class="overflow-hidden">
     <div data-full-width>
-        <div class="w-fit flex flex-col p-2 border border-white">
+        <div class="relative w-fit flex flex-col p-2 border border-white">
+            <button class="absolute top-0 right-0" onclick={() => hideWindow()}>
+                <Icon name="x" />
+            </button>
+
             {#if currentDisplay}
-                <p class="w-fit">{currentDisplay.formatted}</p>
+                <p class="w-fit pt-2">{currentDisplay.formatted}</p>
                 <p class="text-xs self-end">
                     Converted <i>{currentDisplay.unix}</i> using
                     <i>{currentDisplay.fetchedIn}</i>.
                 </p>
             {:else}
-                <p>Loading...</p>
+                <p class="pt-2">Loading...</p>
             {/if}
         </div>
     </div>

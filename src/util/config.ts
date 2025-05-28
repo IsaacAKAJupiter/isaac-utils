@@ -19,6 +19,7 @@ export type ConfigUnixFetchFormat =
 
 export interface ConfigP2PContact {
     name: string;
+    ip: string;
 }
 
 export interface Config {

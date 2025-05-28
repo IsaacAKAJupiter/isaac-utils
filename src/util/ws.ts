@@ -205,10 +205,6 @@ function _onMessage(p2pFile: P2PFileSend, event: MessageEvent) {
 }
 
 function _onClose(p2pFile: P2PFileSend, _event: Event) {
-    // TODO: We should validate this to make sure that we are actually closing the connection when the server says to at end of file.
-    // TODO: Contacts.
-    // TODO: History?
-
     const currentFile = get(p2pFilesSending).find((f) => f.id == p2pFile.id);
     if (['error', 'declined', 'finished'].includes(currentFile?.status ?? '')) {
         return;

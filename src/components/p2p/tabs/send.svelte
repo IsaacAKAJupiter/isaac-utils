@@ -1,6 +1,9 @@
 <script lang="ts">
+    import { onMount } from 'svelte';
     import { addAlert } from '../../../stores/alert';
+    import { configStore } from '../../../stores/config';
     import { p2pFilesSending, p2pTextSent } from '../../../stores/p2p';
+    import { getConfigCopy, writeConfig } from '../../../util/config';
     import { formatBytes } from '../../../util/format';
     import { sendFile, sendText } from '../../../util/ws';
     import Progress from '../../progress.svelte';
@@ -8,11 +11,17 @@
 
     let file = $state<FileList>();
     let filePeer = $state<string>('');
+    let fileSendToCustomIP = $state<boolean>();
+    let fileChosenContact = $state<string>('');
+    let fileContactName = $state<string>();
     let textPeer = $state<string>('');
+    let textSendToCustomIP = $state<boolean>();
+    let textChosenContact = $state<string>('');
+    let textContactName = $state<string>();
     let text = $state<string>('');
     let activeTabValue = $state<number>(0);
 
-    function startSendFile() {
+    async function startSendFile() {
         if (!file || file.length !== 1) {
             addAlert({
                 type: 'error',
@@ -23,7 +32,10 @@
             return;
         }
 
-        if (!filePeer) {
+        if (
+            (!fileSendToCustomIP && !fileChosenContact) ||
+            (fileSendToCustomIP && !filePeer)
+        ) {
             addAlert({
                 type: 'error',
                 message: 'No peer given.',
@@ -33,11 +45,46 @@
             return;
         }
 
-        sendFile(filePeer, file[0]);
+        sendFile(!fileSendToCustomIP ? fileChosenContact : filePeer, file[0]);
+
+        if (fileSendToCustomIP && fileContactName) {
+            if ($configStore) {
+                let newConfig = getConfigCopy($configStore);
+
+                const contactIndex = newConfig.p2p.contacts.findIndex(
+                    (c) => c.ip == filePeer
+                );
+                if (contactIndex != -1) {
+                    newConfig.p2p.contacts.splice(contactIndex, 1);
+                }
+                newConfig.p2p.contacts = [
+                    ...newConfig.p2p.contacts,
+                    { name: fileContactName, ip: filePeer },
+                ];
+
+                configStore.set(newConfig);
+                await writeConfig(newConfig);
+            } else {
+                addAlert({
+                    type: 'info',
+                    message: 'Could not save the contact in the config.',
+                    dismissible: true,
+                    timeout: 5000,
+                });
+            }
+        }
+
+        fileSendToCustomIP = false;
+        fileChosenContact = '';
+        filePeer = '';
+        fileContactName = '';
     }
 
     async function startSendText() {
-        if (!textPeer) {
+        if (
+            (!textSendToCustomIP && !textChosenContact) ||
+            (textSendToCustomIP && !textPeer)
+        ) {
             addAlert({
                 type: 'error',
                 message: 'No peer given.',
@@ -57,7 +104,37 @@
             return;
         }
 
-        const result = await sendText(textPeer, text);
+        if (textSendToCustomIP && textContactName) {
+            if ($configStore) {
+                let newConfig = getConfigCopy($configStore);
+
+                const contactIndex = newConfig.p2p.contacts.findIndex(
+                    (c) => c.ip == textPeer
+                );
+                if (contactIndex != -1) {
+                    newConfig.p2p.contacts.splice(contactIndex, 1);
+                }
+                newConfig.p2p.contacts = [
+                    ...newConfig.p2p.contacts,
+                    { name: textContactName, ip: textPeer },
+                ];
+
+                configStore.set(newConfig);
+                await writeConfig(newConfig);
+            } else {
+                addAlert({
+                    type: 'info',
+                    message: 'Could not save the contact in the config.',
+                    dismissible: true,
+                    timeout: 5000,
+                });
+            }
+        }
+
+        const result = await sendText(
+            !textSendToCustomIP ? textChosenContact : textPeer,
+            text
+        );
         if (result.success) {
             addAlert({
                 type: 'success',
@@ -74,7 +151,22 @@
             timeout: 10000,
             dismissible: true,
         });
+
+        textSendToCustomIP = false;
+        textChosenContact = '';
+        textPeer = '';
+        textContactName = '';
     }
+
+    function peerContact(ip: string) {
+        return ($configStore?.p2p.contacts ?? []).find((c) => c.ip === ip);
+    }
+
+    onMount(() => {
+        const contacts = $configStore?.p2p.contacts ?? [];
+        fileSendToCustomIP = contacts.length < 1;
+        fileChosenContact = contacts.length > 0 ? contacts[0].ip : '';
+    });
 </script>
 
 <div class="bg-accent">
@@ -100,14 +192,66 @@
             {#if activeTabValue == 0}
                 <div class="mb-4">
                     <div>
-                        <div class="flex space-x-2 items-center mb-2">
-                            <p>Peer:</p>
-                            <input
-                                class="input"
-                                type="text"
-                                bind:value={filePeer}
-                            />
+                        <div class="flex space-x-2 items-center mb-4 max-w-96">
+                            <p>Contact:</p>
+                            <select
+                                class="input !w-auto flex-1"
+                                bind:value={fileChosenContact}
+                            >
+                                {#each $configStore?.p2p.contacts ?? [] as contact}
+                                    <option value={contact.ip}>
+                                        {contact.name}
+                                    </option>
+                                {:else}
+                                    <option disabled value="">
+                                        No Contacts Available
+                                    </option>
+                                {/each}
+                            </select>
                         </div>
+
+                        <div class="mb-4">
+                            <label class="flex space-x-2 items-center">
+                                <input
+                                    type="checkbox"
+                                    class="checkbox"
+                                    bind:checked={fileSendToCustomIP}
+                                />
+                                <span>Send To Non-Contact</span>
+                            </label>
+                        </div>
+
+                        {#if fileSendToCustomIP}
+                            <div
+                                class="flex space-x-2 items-center mb-4 max-w-96"
+                            >
+                                <p class="w-28">Custom IP:</p>
+                                <input
+                                    class="input !w-auto flex-1"
+                                    type="text"
+                                    bind:value={filePeer}
+                                />
+                            </div>
+                            <div
+                                class="flex space-x-2 items-center mb-4 max-w-96"
+                            >
+                                <div class="flex items-center space-x-1 w-28">
+                                    <div>
+                                        <p>Contact Name</p>
+                                        <p class="text-xs text-right">
+                                            (Optional)
+                                        </p>
+                                    </div>
+                                    <p>:</p>
+                                </div>
+                                <input
+                                    class="input !w-auto flex-1"
+                                    type="text"
+                                    bind:value={fileContactName}
+                                />
+                            </div>
+                        {/if}
+
                         <div class="flex space-x-2 items-center">
                             <p>File:</p>
                             <input type="file" bind:files={file} />
@@ -138,7 +282,10 @@
                                     <td class="text-center">
                                         {file.file.name}
                                     </td>
-                                    <td class="text-center">{file.peer}</td>
+                                    <td class="text-center">
+                                        {peerContact(file.peer)?.name ??
+                                            file.peer}
+                                    </td>
                                     <td class="text-center">
                                         {#if file.status == 'error'}
                                             <p class="text-red-600">Error!</p>
@@ -186,21 +333,70 @@
             {#if activeTabValue == 1}
                 <div class="mb-4">
                     <div>
-                        <div class="flex space-x-2 items-center mb-2">
-                            <p>Peer:</p>
-                            <input
-                                class="input"
-                                type="text"
-                                bind:value={textPeer}
-                            />
+                        <div class="flex space-x-2 items-center mb-4 max-w-96">
+                            <p>Contact:</p>
+                            <select
+                                class="input !w-auto flex-1"
+                                bind:value={textChosenContact}
+                            >
+                                {#each $configStore?.p2p.contacts ?? [] as contact}
+                                    <option value={contact.ip}>
+                                        {contact.name}
+                                    </option>
+                                {:else}
+                                    <option disabled value="">
+                                        No Contacts Available
+                                    </option>
+                                {/each}
+                            </select>
                         </div>
-                        <div class="flex space-x-2 items-center">
+
+                        <div class="mb-4">
+                            <label class="flex space-x-2 items-center">
+                                <input
+                                    type="checkbox"
+                                    class="checkbox"
+                                    bind:checked={textSendToCustomIP}
+                                />
+                                <span>Send To Non-Contact</span>
+                            </label>
+                        </div>
+
+                        {#if textSendToCustomIP}
+                            <div
+                                class="flex space-x-2 items-center mb-4 max-w-96"
+                            >
+                                <p class="w-28">Custom IP:</p>
+                                <input
+                                    class="input !w-auto flex-1"
+                                    type="text"
+                                    bind:value={textPeer}
+                                />
+                            </div>
+                            <div
+                                class="flex space-x-2 items-center mb-4 max-w-96"
+                            >
+                                <div class="flex items-center space-x-1 w-28">
+                                    <div>
+                                        <p>Contact Name</p>
+                                        <p class="text-xs text-right">
+                                            (Optional)
+                                        </p>
+                                    </div>
+                                    <p>:</p>
+                                </div>
+                                <input
+                                    class="input !w-auto flex-1"
+                                    type="text"
+                                    bind:value={textContactName}
+                                />
+                            </div>
+                        {/if}
+
+                        <div class="flex space-x-2">
                             <p>Text:</p>
-                            <input
-                                class="input"
-                                type="text"
-                                bind:value={text}
-                            />
+                            <textarea class="input" rows="5" bind:value={text}
+                            ></textarea>
                         </div>
                     </div>
                     <div class="mt-4 flex space-x-2 items-center">

@@ -4,6 +4,7 @@
     import { save } from '@tauri-apps/plugin-dialog';
     import { revealItemInDir } from '@tauri-apps/plugin-opener';
     import { addAlert } from '../../../stores/alert';
+    import { configStore } from '../../../stores/config';
     import {
         p2pFilesReceiving,
         p2pTextReceived,
@@ -77,6 +78,10 @@
             });
         }
     }
+
+    function peerContact(ip: string) {
+        return ($configStore?.p2p.contacts ?? []).find((c) => c.ip === ip);
+    }
 </script>
 
 <div class="bg-accent">
@@ -104,7 +109,10 @@
                     {#if file.status === 'waitingForAcceptOrDecline'}
                         <div class="mb-4">
                             <p>New File!</p>
-                            <p>From: {file.peer}</p>
+                            <p>
+                                From: {peerContact(file.peer)?.name ??
+                                    file.peer}
+                            </p>
                             <p>Name: {file.name}</p>
                             <p>Size: {formatBytes(file.size)}</p>
                             <div class="mt-2 flex space-x-2 items-center">
@@ -141,7 +149,10 @@
                                 {#if file.status !== 'waitingForAcceptOrDecline'}
                                     <tr>
                                         <td class="text-left">{file.name}</td>
-                                        <td class="text-center">{file.peer}</td>
+                                        <td class="text-center">
+                                            {peerContact(file.peer)?.name ??
+                                                file.peer}
+                                        </td>
                                         <td>
                                             {#if file.status == 'error'}
                                                 <p class="text-red-600">

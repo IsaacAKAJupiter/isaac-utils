@@ -1,5 +1,6 @@
 <script lang="ts">
     import Tabs from '../tabs.svelte';
+    import Contacts from './tabs/contacts.svelte';
     import Receive from './tabs/receive.svelte';
     import Scan from './tabs/scan.svelte';
     import Send from './tabs/send.svelte';
@@ -30,6 +31,11 @@
                     label: 'Scan',
                     value: 3,
                     component: Scan,
+                },
+                {
+                    label: 'Contacts',
+                    value: 4,
+                    component: Contacts,
                 },
             ]}
         />

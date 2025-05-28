@@ -4,7 +4,12 @@ A collection of utilities made by and for Isaac (and maybe others).
 
 ## Current Utilities
 
-- TODO
+- Unix/Epoch time conversions. Unix -><- Human readable.
+- Copy current unix time in seconds and milliseconds.
+- Highlight unix timestamp and use shortcut to popup small window with human readable version.
+- Generate UUIDs versions 1, 3, 4, 5, 6, 7. With the ability to store a common namespace for 3/5.
+- Send files/text via a P2P transfer, store peers via contacts.
+- Port scan for available peers on the local network to send files/text to.
 
 ## Building
 

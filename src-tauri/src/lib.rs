@@ -127,18 +127,6 @@ async fn c_check_ports(size: usize, app: AppHandle) -> serde_json::Value {
                         results.append(&mut filtered);
                     }
 
-                    // let results = join_all(
-                    //     nw.hosts()
-                    //         .filter(|host| *host != interface.ipv4[0].addr())
-                    //         .chunks(size)
-                    //         .map(|host| scan_port(host, 15446, 1)),
-                    // )
-                    // .await;
-                    // let filtered: Vec<_> = results
-                    //     .into_iter()
-                    //     .filter(|host| host.1)
-                    //     .map(|host| json!({ "ip": host.0 }))
-                    //     .collect();
                     return json!({ "results": results });
                 }
                 Err(e) => {
