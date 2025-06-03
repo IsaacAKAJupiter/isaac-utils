@@ -11,6 +11,7 @@
     import { onDestroy, onMount } from 'svelte';
     import type { Unsubscriber } from 'svelte/store';
     import Alerts from '../../components/alerts/alerts.svelte';
+    import BarcodeBase from '../../components/barcode/base.svelte';
     import P2PBase from '../../components/p2p/base.svelte';
     import SettingsBase from '../../components/settings/base.svelte';
     import Sidenav from '../../components/sidenav.svelte';
@@ -95,7 +96,7 @@
 <Alerts />
 
 <div class="flex">
-    <Sidenav page={(p) => (page = p)} />
+    <Sidenav onPageChange={(p) => (page = p)} />
 
     <main class="flex-1">
         {#if page == 'settings'}
@@ -103,7 +104,6 @@
                 <SettingsBase />
             </div>
         {:else if page == 'unix'}
-            <!--  in:fade out:fade -->
             <div>
                 <UnixBase />
             </div>
@@ -114,6 +114,10 @@
         {:else if page == 'p2p'}
             <div>
                 <P2PBase />
+            </div>
+        {:else if page == 'barcode'}
+            <div>
+                <BarcodeBase />
             </div>
         {/if}
     </main>

@@ -29,6 +29,7 @@ tauri-plugin-notification = "2"
 tauri-plugin-opener = "2"
 dns-lookup = "2.0.4"
 netdev = "0.34.1"
+sanitize-filename = "0.6.0"
 
 [features]
 # This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!

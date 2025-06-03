@@ -17,8 +17,18 @@
             page: 'p2p',
             icon: '',
         },
+        {
+            text: 'barcode',
+            page: 'barcode',
+            icon: '',
+        },
+        {
+            text: 'base64',
+            page: 'base64',
+            icon: '',
+        },
     ];
-    let { page }: { page: (p: string) => void } = $props();
+    let { onPageChange }: { onPageChange: (p: string) => void } = $props();
 </script>
 
 <!-- Fake sidenav to push contents beside. -->
@@ -39,7 +49,7 @@
             {#each icons as icon}
                 <button
                     class="border-b border-white border-opacity-50 px-2 py-2 flex flex-col items-center justify-center w-full"
-                    onclick={() => page(icon.page)}
+                    onclick={() => onPageChange(icon.page)}
                 >
                     {#if icon.icon}
                         <Icon
@@ -55,7 +65,7 @@
         <div
             class="border-t border-white border-opacity-50 pt-2 px-2 w-full flex flex-col items-center justify-center"
         >
-            <button onclick={() => page('settings')}>
+            <button onclick={() => onPageChange('settings')}>
                 <Icon name="settings" class="text-2xl" />
             </button>
         </div>

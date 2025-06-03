@@ -10,8 +10,7 @@ use futures::future::join_all;
 use ipnet::Ipv4Net;
 use serde_json::json;
 use std::{
-    net::{IpAddr, Ipv4Addr, SocketAddr},
-    str::FromStr,
+    fs::OpenOptions, io::{BufWriter, Write}, net::{IpAddr, Ipv4Addr, SocketAddr}, path::{Path, PathBuf}, str::FromStr
 };
 use tauri::{
     include_image,
@@ -154,6 +153,61 @@ async fn c_get_hostname(ip: String) -> String {
     "".to_string()
 }
 
+#[tauri::command]
+async fn c_save_file(path: String, name: String, data: Vec<u8>) -> bool {
+    let final_filename = if name.is_empty() {
+        String::new()
+    } else {
+        let sanitized = sanitize_filename::sanitize(&name);
+        if sanitized.is_empty() {
+            eprintln!("Error: Provided filename '{}' sanitized to an empty string.", name);
+            return false;
+        }
+        sanitized
+    };
+
+    let full_path: PathBuf;
+    if final_filename.is_empty() {
+        full_path = PathBuf::from(&path);
+    } else {
+        full_path = Path::new(&path).join(&final_filename);
+    }
+
+    let file = match OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(&full_path)
+    {
+        Ok(f) => f,
+        Err(e) => {
+            eprintln!("Error opening file '{}': {}", full_path.display(), e);
+            return false;
+        }
+    };
+
+    let mut buf_writer = BufWriter::new(file);
+
+    match buf_writer.write_all(&data) {
+        Ok(_) => {
+            match buf_writer.flush() {
+                Ok(_) => {
+                    println!("Successfully saved blob to: {}", full_path.display());
+                    true
+                }
+                Err(e) => {
+                    eprintln!("Error flushing data to file '{}': {}", full_path.display(), e);
+                    false
+                }
+            }
+        }
+        Err(e) => {
+            eprintln!("Error writing data to file '{}': {}", full_path.display(), e);
+            false
+        }
+    }
+}
+
 fn make_tray(app: &tauri::App) -> Result<(), tauri::Error> {
     let show_hide = MenuItemBuilder::with_id("show_hide", "Show/Hide").build(app)?;
     let divider = PredefinedMenuItem::separator(app)?;
@@ -233,6 +287,7 @@ pub fn run() {
             c_valid_shortcut,
             c_check_ports,
             c_get_hostname,
+            c_save_file,
         ])
         .setup(|app| {
             let _ = make_tray(&app);
