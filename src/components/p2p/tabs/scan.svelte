@@ -124,12 +124,15 @@
                 <div class="text-xs">
                     <Loader style="dots" />
                 </div>
-                <div class="text-primary h-4 w-full my-4">
-                    <Progress
-                        progress={(resultState.progress / resultState.total) *
-                            100}
-                        height="100%"
-                    />
+                <div class="text-primary w-full my-4">
+                    <div class="h-4">
+                        <Progress
+                            progress={(resultState.progress /
+                                resultState.total) *
+                                100}
+                            height="100%"
+                        />
+                    </div>
                     <p class="text-center text-xs">
                         {resultState.progress} /
                         {resultState.total}

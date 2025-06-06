@@ -279,10 +279,10 @@
                         <tbody>
                             {#each $p2pFilesSending as file}
                                 <tr>
-                                    <td class="text-center">
+                                    <td class="text-center break-all">
                                         {file.file.name}
                                     </td>
-                                    <td class="text-center">
+                                    <td class="text-center break-all">
                                         {peerContact(file.peer)?.name ??
                                             file.peer}
                                     </td>
@@ -301,17 +301,19 @@
                                             </p>
                                         {:else if file.status == 'sendingData' || file.status == 'finished'}
                                             <div
-                                                class="{file.status ==
+                                                class={file.status ==
                                                 'sendingData'
                                                     ? 'text-primary'
-                                                    : 'text-green-600'} h-4"
+                                                    : 'text-green-600'}
                                             >
-                                                <Progress
-                                                    progress={(file.transferred /
-                                                        file.file.size) *
-                                                        100}
-                                                    height="100%"
-                                                />
+                                                <div class="h-4">
+                                                    <Progress
+                                                        progress={(file.transferred /
+                                                            file.file.size) *
+                                                            100}
+                                                        height="100%"
+                                                    />
+                                                </div>
                                                 <p class="text-center text-xs">
                                                     {formatBytes(
                                                         file.transferred
