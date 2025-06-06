@@ -294,8 +294,13 @@ pub fn run() {
 
             let handler_clone = app.handle().clone();
             tauri::async_runtime::spawn(async move {
-                let handler_clone = handler_clone.to_owned();
-                ws::start(handler_clone).await;
+                if let Err(e) = ws::start(handler_clone.clone()).await {
+                    eprintln!("Websocket server stopped with error: {}", e);
+                    std::process::exit(1);
+                } else {
+                    println!("Websocket server stopped gracefully, closing.");
+                    std::process::exit(2);
+                }
             });
 
             // Uncomment below to automatically open devtools for the unix popup window.

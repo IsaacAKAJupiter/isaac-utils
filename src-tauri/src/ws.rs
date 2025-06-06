@@ -14,19 +14,42 @@ use tokio_tungstenite::{
     tungstenite::{Error, Message, Result},
 };
 
-pub async fn start(handler_clone: AppHandle) {
+pub async fn start(handler_clone: AppHandle) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let addr = "0.0.0.0:15446";
-    let listener = TcpListener::bind(&addr).await.expect("Can't listen.");
+
+    let listener = TcpListener::bind(&addr).await?;
     println!("Listening on: {}", addr);
 
     while let Ok((stream, _)) = listener.accept().await {
-        let peer = stream
-            .peer_addr()
-            .expect("connected streams should have a peer address");
+        let peer = match stream.peer_addr() {
+            Ok(addr) => addr,
+            Err(e) => {
+                eprintln!("Could not get peer address for incoming connection: {}", e);
+                continue;
+            }
+        };
+
         println!("Peer address: {}", peer);
 
-        let _ = accept_connection(peer, stream, &handler_clone).await;
+        let app_clone_for_task = handler_clone.clone();
+        let handle = tokio::spawn(async move {
+            accept_connection(peer, stream, &app_clone_for_task).await
+        });
+
+        if let Err(join_error) = handle.await {
+            if join_error.is_panic() {
+                eprintln!("A WebSocket connection handler panicked: {:?}", join_error);
+                return Err(Box::new(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    format!("WebSocket handler panicked: {:?}", join_error.into_panic()),
+                )));
+            } else {
+                eprintln!("WebSocket connection handler task failed: {}", join_error);
+            }
+        }
     }
+
+    Ok(())
 }
 
 async fn accept_connection(peer: SocketAddr, stream: TcpStream, app: &AppHandle) {
@@ -39,8 +62,14 @@ async fn accept_connection(peer: SocketAddr, stream: TcpStream, app: &AppHandle)
 }
 
 async fn handle_connection(peer: SocketAddr, stream: TcpStream, app: &AppHandle) -> Result<()> {
-    let ws_stream: tokio_tungstenite::WebSocketStream<TcpStream> =
-        accept_async(stream).await.expect("Failed to accept");
+    let ws_stream: tokio_tungstenite::WebSocketStream<TcpStream> = match accept_async(stream).await {
+        Ok(s) => s,
+        Err(e) => {
+            println!("WebSocket handshake failed for {}: {:?}", peer, e);
+            return Err(e);
+        }
+    };
+
     println!("New WebSocket connection: {}", peer);
     let (ws_sender, mut ws_receiver) = ws_stream.split();
     let ws_sender_arc = Arc::new(Mutex::new(ws_sender));
