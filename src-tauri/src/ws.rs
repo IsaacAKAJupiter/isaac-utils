@@ -244,9 +244,6 @@ async fn handle_connection(peer: SocketAddr, stream: TcpStream, app: &AppHandle)
 
                 if file_processed >= file_size {
                     println!("Finished processing file!");
-                    state = "".to_string();
-                    file_size = -1;
-                    file_processed = 0;
                     let mut sender_lock = ws_sender_arc.lock().await;
                     let result = sender_lock.close().await;
                     if result.is_err() {
