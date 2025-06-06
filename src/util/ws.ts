@@ -146,14 +146,15 @@ function updateP2PFileSendStatus(id: string, status: P2PFileStatus) {
     );
 }
 
-function updateP2PFileSendTransferred(id: string, addedAmount: number) {
+function updateP2PFileSendTransferred(id: string, transferred: number) {
     p2pFilesSending.update((v) =>
         v.map((f) => {
             if (f.id !== id) return f;
 
             return {
                 ...f,
-                transferred: f.transferred + addedAmount,
+                transferred:
+                    transferred > f.file.size ? f.file.size : transferred,
             };
         })
     );
@@ -169,7 +170,13 @@ function _onOpen(p2pFile: P2PFileSend, timeout: number, _event: Event) {
 }
 
 function _onMessage(p2pFile: P2PFileSend, event: MessageEvent) {
-    if (event.data === 'tick') return;
+    if (
+        event.data === 'tick' ||
+        event.data === 'ping' ||
+        event.data === 'pong'
+    ) {
+        return;
+    }
 
     const currentFile = get(p2pFilesSending).find((f) => f.id == p2pFile.id);
     if (!currentFile) return;
@@ -196,7 +203,13 @@ function _onMessage(p2pFile: P2PFileSend, event: MessageEvent) {
         ) {
             const [_, fileID, _dataLen, fileProcessed, _successfulWrite] =
                 event.data.split('<|>');
-            updateP2PFileSendTransferred(fileID, +fileProcessed);
+            const processed = +fileProcessed;
+            updateP2PFileSendTransferred(fileID, processed);
+
+            if (currentFile.transferred + processed >= currentFile.file.size) {
+                updateP2PFileSendStatus(fileID, 'finished');
+                p2pFile.ws.close();
+            }
             return;
         }
 
@@ -234,7 +247,5 @@ function _sendFileStart(p2pFile: P2PFileSend) {
             })
         )
         .catch((err) => _onError(p2pFile, err))
-        .then(() => {
-            updateP2PFileSendStatus(p2pFile.id, 'finished');
-        });
+        .then(() => {});
 }

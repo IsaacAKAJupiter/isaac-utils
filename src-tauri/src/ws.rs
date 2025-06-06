@@ -252,7 +252,7 @@ async fn handle_connection(peer: SocketAddr, stream: TcpStream, app: &AppHandle)
                     if result.is_err() {
                         println!("Failed closing with error: {:?}", result.unwrap_err());
                     }
-                    continue;
+                    break;
                 }
             } else {
                 println!("{:?}", file.unwrap_err());
