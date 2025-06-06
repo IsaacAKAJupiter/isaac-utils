@@ -206,7 +206,7 @@ function _onMessage(p2pFile: P2PFileSend, event: MessageEvent) {
             const processed = +fileProcessed;
             updateP2PFileSendTransferred(fileID, processed);
 
-            if (currentFile.transferred + processed >= currentFile.file.size) {
+            if (processed >= currentFile.file.size) {
                 updateP2PFileSendStatus(fileID, 'finished');
                 p2pFile.ws.close();
             }
