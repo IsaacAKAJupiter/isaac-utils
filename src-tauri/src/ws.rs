@@ -1,13 +1,12 @@
 use futures::{SinkExt, StreamExt};
 use serde_json::json;
-use std::fs::OpenOptions;
-use std::io::Write;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tauri::Listener;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::Mutex;
+use tokio::io::AsyncWriteExt;
 use tokio_tungstenite::tungstenite::Utf8Bytes;
 use tokio_tungstenite::{
     accept_async,
@@ -87,10 +86,12 @@ async fn handle_connection(peer: SocketAddr, stream: TcpStream, app: &AppHandle)
     let mut file_size: i64 = -1;
     let mut file_processed: i64 = 0;
     let file_save_path_arc = Arc::new(Mutex::new("".to_string()));
+    let mut file_handle: Option<tokio::fs::File> = None;
 
     while let Some(msg) = ws_receiver.next().await {
         let msg = msg?;
         if msg.is_close() {
+            println!("Closing!");
             break;
         }
 
@@ -197,28 +198,40 @@ async fn handle_connection(peer: SocketAddr, stream: TcpStream, app: &AppHandle)
             }
 
             let data = msg.into_data();
-            let data_len = data.len();
-            let is_start = file_processed < 1;
-            file_processed += data_len.try_into().unwrap_or(0);
+            let data_len = data.len() as i64;
 
-            // Write the data.
             let path_guard = file_save_path_arc.lock().await;
-            let file = if is_start {
-                OpenOptions::new()
+            if path_guard.is_empty() {
+                continue;
+            }
+
+            if file_handle.is_none() {
+                let f = tokio::fs::OpenOptions::new()
                     .create(true)
                     .write(true)
                     .truncate(true)
                     .open(&*path_guard)
-            } else {
-                OpenOptions::new()
-                    .create(true)
-                    .append(true)
-                    .open(&*path_guard)
-            };
-            if file.is_ok() {
-                let mut buf = std::io::BufWriter::new(file.unwrap());
-                let result = buf.write_all(&data);
-                buf.flush()?;
+                    .await;
+
+                if let Ok(file) = f {
+                    file_handle = Some(file);
+                } else {
+                    println!("Failed to create file: {:?}", f.err());
+                    break;
+                }
+            }
+
+            // Write data asynchronously
+            let mut successful_write = false;
+            if let Some(file) = file_handle.as_mut() {
+                if file.write_all(&data).await.is_ok() {
+                    successful_write = true;
+                }
+            }
+
+            drop(path_guard);
+
+            file_processed += data_len;
 
                 if let Some(window) = app.get_webview_window("main") {
                     let _ = window.emit(
@@ -229,7 +242,7 @@ async fn handle_connection(peer: SocketAddr, stream: TcpStream, app: &AppHandle)
                                 "id": file_id,
                                 "chunk_size": data_len,
                                 "total_processed": file_processed,
-                                "successful_write": result.is_ok()
+                                "successful_write": successful_write
                             }
                         }),
                     );
@@ -242,22 +255,17 @@ async fn handle_connection(peer: SocketAddr, stream: TcpStream, app: &AppHandle)
                         file_id,
                         data_len,
                         file_processed,
-                        result.is_ok()
+                        successful_write
                     ))))
                     .await;
 
                 if file_processed >= file_size {
-                    println!("Finished processing file!");
-                    let mut sender_lock = ws_sender_arc.lock().await;
-                    let result = sender_lock.close().await;
-                    if result.is_err() {
-                        println!("Failed closing with error: {:?}", result.unwrap_err());
+                    println!("Finished processing file! Waiting for close.");
+                    
+                    if let Some(mut file) = file_handle.take() {
+                        let _ = file.flush().await;
                     }
-                    break;
                 }
-            } else {
-                println!("{:?}", file.unwrap_err());
-            }
 
             continue;
         }
