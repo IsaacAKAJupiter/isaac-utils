@@ -55,10 +55,14 @@ pub async fn start(handler_clone: AppHandle) -> Result<(), Box<dyn std::error::E
 async fn accept_connection(peer: SocketAddr, stream: TcpStream, app: &AppHandle) {
     if let Err(e) = handle_connection(peer, stream, app).await {
         match e {
-            Error::ConnectionClosed | Error::Protocol(_) | Error::Utf8 => (),
+            Error::ConnectionClosed | Error::Protocol(_) | Error::Utf8 => {
+                println!("Connection for {} closed gracefully or protocol error: {:?}", peer, e);
+            },
             err => println!("Error processing connection: {}", err),
         }
     }
+
+    println!("accept_connection task for {} completed.", peer);
 }
 
 async fn handle_connection(peer: SocketAddr, stream: TcpStream, app: &AppHandle) -> Result<()> {
@@ -278,6 +282,8 @@ async fn handle_connection(peer: SocketAddr, stream: TcpStream, app: &AppHandle)
             continue;
         }
     }
+
+    println!("handle_connection loop for {} exited.", peer);
 
     Ok(())
 }

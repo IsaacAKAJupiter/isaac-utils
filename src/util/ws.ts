@@ -208,6 +208,7 @@ function _onMessage(p2pFile: P2PFileSend, event: MessageEvent) {
 
             if (processed >= currentFile.file.size) {
                 updateP2PFileSendStatus(fileID, 'finished');
+                console.log('closing ws');
                 p2pFile.ws.close();
             }
             return;
@@ -218,6 +219,7 @@ function _onMessage(p2pFile: P2PFileSend, event: MessageEvent) {
 }
 
 function _onClose(p2pFile: P2PFileSend, _event: Event) {
+    console.log('onclose');
     const currentFile = get(p2pFilesSending).find((f) => f.id == p2pFile.id);
     if (['error', 'declined', 'finished'].includes(currentFile?.status ?? '')) {
         return;
