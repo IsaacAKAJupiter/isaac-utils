@@ -22,6 +22,14 @@ export interface ConfigP2PContact {
     ip: string;
 }
 
+export interface ConfigBarcodeLastSettings {
+    type: string;
+    text: string;
+    errorCorrection: 'L' | 'M' | 'Q' | 'H';
+    includeText: boolean;
+    barcodePerLine: boolean;
+}
+
 export interface Config {
     locale: string;
     shortcuts: { unixToReadable: string };
@@ -36,6 +44,9 @@ export interface Config {
     p2p: {
         contacts: ConfigP2PContact[];
         scanSize: number;
+    };
+    barcode: {
+        lastSettings?: ConfigBarcodeLastSettings;
     };
 }
 
@@ -61,6 +72,7 @@ export function defaultConfig(): Config {
             contacts: [],
             scanSize: 100,
         },
+        barcode: {},
     };
 }
 

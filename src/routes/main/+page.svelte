@@ -12,6 +12,7 @@
     import type { Unsubscriber } from 'svelte/store';
     import Alerts from '../../components/alerts/alerts.svelte';
     import BarcodeBase from '../../components/barcode/base.svelte';
+    import Base64Base from '../../components/base64/base.svelte';
     import P2PBase from '../../components/p2p/base.svelte';
     import SettingsBase from '../../components/settings/base.svelte';
     import Sidenav from '../../components/sidenav.svelte';
@@ -118,6 +119,10 @@
         {:else if page == 'barcode'}
             <div>
                 <BarcodeBase />
+            </div>
+        {:else if page == 'base64'}
+            <div>
+                <Base64Base />
             </div>
         {/if}
     </main>

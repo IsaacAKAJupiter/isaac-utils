@@ -1,7 +1,6 @@
 <script lang="ts">
     import Tabs from '../tabs.svelte';
     import Generate from './tabs/generate.svelte';
-    import Settings from './tabs/settings.svelte';
 </script>
 
 <main>
@@ -14,11 +13,6 @@
                     label: 'Generate',
                     value: 1,
                     component: Generate,
-                },
-                {
-                    label: 'Settings',
-                    value: 2,
-                    component: Settings,
                 },
             ]}
         />

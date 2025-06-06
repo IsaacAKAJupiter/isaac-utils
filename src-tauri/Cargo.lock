@@ -2127,7 +2127,7 @@ dependencies = [
 
 [[package]]
 name = "isaac-utils"
-version = "0.0.1"
+version = "0.2.0"
 dependencies = [
  "accessibility-ng",
  "accessibility-sys-ng",

@@ -210,16 +210,22 @@
                     <p class="mb-2">Received Text</p>
                     <table class="table-fixed w-full">
                         <thead>
-                            <tr>
+                            <tr class="border-b border-white">
                                 <th class="text-left">Text</th>
-                                <th class="text-left">Peer</th>
+                                <th class="text-right">Peer</th>
                             </tr>
                         </thead>
                         <tbody>
                             {#each $p2pTextReceived as text}
-                                <tr>
-                                    <td class="text-left">{text.text}</td>
-                                    <td class="text-left">{text.peer}</td>
+                                <tr class="border-b border-white">
+                                    <td class="text-left">
+                                        <p
+                                            class="max-h-24 overflow-auto scrollbar-thin"
+                                        >
+                                            {text.text}
+                                        </p>
+                                    </td>
+                                    <td class="text-right">{text.peer}</td>
                                 </tr>
                             {/each}
                         </tbody>

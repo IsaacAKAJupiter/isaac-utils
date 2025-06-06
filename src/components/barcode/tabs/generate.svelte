@@ -2,7 +2,10 @@
     import BwipJs from '@bwip-js/browser';
     import { invoke } from '@tauri-apps/api/core';
     import { open, save } from '@tauri-apps/plugin-dialog';
+    import { onMount } from 'svelte';
     import { addAlert } from '../../../stores/alert';
+    import { configStore } from '../../../stores/config';
+    import { getConfigCopy, writeConfig } from '../../../util/config';
 
     const BARCODE_OPTIONS = [
         'auspost',
@@ -127,8 +130,20 @@
     let canvas = $state<HTMLCanvasElement>();
     let hiddenCanvas = $state<HTMLCanvasElement>();
 
+    onMount(() => {
+        type = $configStore?.barcode.lastSettings?.type ?? 'qrcode';
+        text = $configStore?.barcode.lastSettings?.text ?? '';
+        errorCorrection =
+            $configStore?.barcode.lastSettings?.errorCorrection ?? 'M';
+        includeText = $configStore?.barcode.lastSettings?.includeText ?? false;
+        barcodePerLine =
+            $configStore?.barcode.lastSettings?.barcodePerLine ?? false;
+    });
+
     async function generate() {
         if (!canvas) return;
+
+        _saveLastConfig();
 
         if (!text) {
             addAlert({
@@ -277,6 +292,22 @@
             });
             return false;
         }
+    }
+
+    async function _saveLastConfig() {
+        if (!$configStore) return;
+
+        // Update config.
+        let newConfig = getConfigCopy($configStore);
+        newConfig.barcode.lastSettings = {
+            type,
+            text,
+            errorCorrection,
+            includeText,
+            barcodePerLine,
+        };
+        configStore.set(newConfig);
+        await writeConfig(newConfig);
     }
 </script>
 

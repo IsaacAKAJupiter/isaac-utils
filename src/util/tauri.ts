@@ -1,8 +1,8 @@
 import { invoke } from '@tauri-apps/api/core';
-import { check, Update } from '@tauri-apps/plugin-updater';
 import { ask, message } from '@tauri-apps/plugin-dialog';
-import { addAlert } from '../stores/alert';
 import { relaunch } from '@tauri-apps/plugin-process';
+import { check, type Update } from '@tauri-apps/plugin-updater';
+import { addAlert } from '../stores/alert';
 
 export async function copy(value: string | number, alert: boolean) {
     const success = await invoke<boolean>('c_copy', { value: `${value}` });

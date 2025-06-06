@@ -1,6 +1,6 @@
 [package]
 name = "isaac-utils"
-version = "0.0.1"
+version = "0.2.0"
 description = "A collection of utilities made by and for Isaac (and maybe others)."
 authors = ["Isaac Oram"]
 edition = "2021"
