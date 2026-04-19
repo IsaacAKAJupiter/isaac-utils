@@ -4,16 +4,18 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tauri::Listener;
 use tauri::{AppHandle, Emitter, Manager};
+use tokio::io::AsyncWriteExt;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::Mutex;
-use tokio::io::AsyncWriteExt;
 use tokio_tungstenite::tungstenite::Utf8Bytes;
 use tokio_tungstenite::{
     accept_async,
     tungstenite::{Error, Message, Result},
 };
 
-pub async fn start(handler_clone: AppHandle) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+pub async fn start(
+    handler_clone: AppHandle,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let addr = "0.0.0.0:15446";
 
     let listener = TcpListener::bind(&addr).await?;
@@ -31,9 +33,8 @@ pub async fn start(handler_clone: AppHandle) -> Result<(), Box<dyn std::error::E
         println!("Peer address: {}", peer);
 
         let app_clone_for_task = handler_clone.clone();
-        let handle = tokio::spawn(async move {
-            accept_connection(peer, stream, &app_clone_for_task).await
-        });
+        let handle =
+            tokio::spawn(async move { accept_connection(peer, stream, &app_clone_for_task).await });
 
         if let Err(join_error) = handle.await {
             if join_error.is_panic() {
@@ -54,9 +55,12 @@ pub async fn start(handler_clone: AppHandle) -> Result<(), Box<dyn std::error::E
 async fn accept_connection(peer: SocketAddr, stream: TcpStream, app: &AppHandle) {
     if let Err(e) = handle_connection(peer, stream, app).await {
         match e {
-            Error::ConnectionClosed | Error::Protocol(_) | Error::Utf8 => {
-                println!("Connection for {} closed gracefully or protocol error: {:?}", peer, e);
-            },
+            Error::ConnectionClosed | Error::Protocol(_) | Error::Utf8(_) => {
+                println!(
+                    "Connection for {} closed gracefully or protocol error: {:?}",
+                    peer, e
+                );
+            }
             err => println!("Error processing connection: {}", err),
         }
     }
@@ -65,7 +69,8 @@ async fn accept_connection(peer: SocketAddr, stream: TcpStream, app: &AppHandle)
 }
 
 async fn handle_connection(peer: SocketAddr, stream: TcpStream, app: &AppHandle) -> Result<()> {
-    let ws_stream: tokio_tungstenite::WebSocketStream<TcpStream> = match accept_async(stream).await {
+    let ws_stream: tokio_tungstenite::WebSocketStream<TcpStream> = match accept_async(stream).await
+    {
         Ok(s) => s,
         Err(e) => {
             println!("WebSocket handshake failed for {}: {:?}", peer, e);
@@ -233,39 +238,36 @@ async fn handle_connection(peer: SocketAddr, stream: TcpStream, app: &AppHandle)
 
             file_processed += data_len;
 
-                if let Some(window) = app.get_webview_window("main") {
-                    let _ = window.emit(
-                        "e_p2p",
-                        json!({
-                            "event": "file_data",
-                            "data": {
-                                "id": file_id,
-                                "chunk_size": data_len,
-                                "total_processed": file_processed,
-                                "successful_write": successful_write
-                            }
-                        }),
-                    );
-                }
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.emit(
+                    "e_p2p",
+                    json!({
+                        "event": "file_data",
+                        "data": {
+                            "id": file_id,
+                            "chunk_size": data_len,
+                            "total_processed": file_processed,
+                            "successful_write": successful_write
+                        }
+                    }),
+                );
+            }
 
-                let mut sender_lock = ws_sender_arc.lock().await;
-                let _ = sender_lock
-                    .send(Message::Text(Utf8Bytes::from(format!(
-                        "__processed<|>{}<|>{}<|>{}<|>{}",
-                        file_id,
-                        data_len,
-                        file_processed,
-                        successful_write
-                    ))))
-                    .await;
+            let mut sender_lock = ws_sender_arc.lock().await;
+            let _ = sender_lock
+                .send(Message::Text(Utf8Bytes::from(format!(
+                    "__processed<|>{}<|>{}<|>{}<|>{}",
+                    file_id, data_len, file_processed, successful_write
+                ))))
+                .await;
 
-                if file_processed >= file_size {
-                    println!("Finished processing file! Waiting for close.");
-                    
-                    if let Some(mut file) = file_handle.take() {
-                        let _ = file.flush().await;
-                    }
+            if file_processed >= file_size {
+                println!("Finished processing file! Waiting for close.");
+
+                if let Some(mut file) = file_handle.take() {
+                    let _ = file.flush().await;
                 }
+            }
 
             continue;
         }
